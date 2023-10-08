@@ -16,6 +16,7 @@ public static class GraphQlExtention
                 .AddTypeExtension<AccessMutation>()
                 .AddTypeExtension<UsersMutation>()
                 .AddTypeExtension<RolesMutation>()
+                .AddTypeExtension<WishlistsMutation>()
             .AddAuthorization()
             .InitializeOnStartup(keepWarm: true);
 
