@@ -16,9 +16,13 @@ namespace ShoppingAssistantApi.Persistance.PersistanceExtentions;
 public class DbInitialaizer
 {
     private readonly IUsersService _usersService;
+
     private readonly IUserManager _userManager;
+
     private readonly IRolesService _rolesService;
+
     private readonly ITokensService _tokensService;
+
     private readonly IMongoCollection<Wishlist> _wishlistCollection;
 
     public IEnumerable<RoleDto> Roles { get; set; }
@@ -171,7 +175,7 @@ public class DbInitialaizer
             {
                 Name = "Grandma's Birthday Gift",
                 Type = WishlistTypes.Gift.ToString(),
-                UserId = ObjectId.Parse(userList[0].Id),
+                CreatedById = ObjectId.Parse(userList[0].Id),
                 Messages = new Message[]
                 {
                     new Message
@@ -190,7 +194,7 @@ public class DbInitialaizer
             {
                 Name = "Gaming PC",
                 Type = WishlistTypes.Product.ToString(),
-                UserId = ObjectId.Parse(userList[1].Id),
+                CreatedById = ObjectId.Parse(userList[1].Id),
                 Messages = new Message[]
                 {
                     new Message

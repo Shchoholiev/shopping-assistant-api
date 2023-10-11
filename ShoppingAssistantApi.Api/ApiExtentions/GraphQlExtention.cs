@@ -12,6 +12,7 @@ public static class GraphQlExtention
             .AddQueryType()
                 .AddTypeExtension<UsersQuery>()
                 .AddTypeExtension<RolesQuery>()
+                .AddTypeExtension<WishlistsQuery>()
             .AddMutationType()
                 .AddTypeExtension<AccessMutation>()
                 .AddTypeExtension<UsersMutation>()

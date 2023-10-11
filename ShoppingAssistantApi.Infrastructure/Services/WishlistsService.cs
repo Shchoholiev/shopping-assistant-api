@@ -15,7 +15,9 @@ namespace ShoppingAssistantApi.Infrastructure.Services;
 public class WishlistsService : IWishlistsService
 {
     private readonly IWishlistsRepository _wishlistsRepository;
+
     private readonly IMessagesRepository _messagesRepository;
+
     private readonly IMapper _mapper;
 
     public WishlistsService(IWishlistsRepository wishlistRepository, IMessagesRepository messageRepository, IMapper mapper)
@@ -28,6 +30,12 @@ public class WishlistsService : IWishlistsService
     public async Task<WishlistDto> StartPersonalWishlistAsync(WishlistCreateDto dto, CancellationToken cancellationToken)
     {
         var newWishlist = _mapper.Map<Wishlist>(dto);
+
+        if (!Enum.TryParse<WishlistTypes>(newWishlist.Type, true, out var enumValue) ||
+            !Enum.GetValues<WishlistTypes>().Contains(enumValue))
+        {
+            throw new InvalidDataException("Provided type is invalid.");
+        }
 
         newWishlist.CreatedById = (ObjectId) GlobalUser.Id;
         newWishlist.CreatedDateUtc = DateTime.UtcNow;
@@ -59,8 +67,7 @@ public class WishlistsService : IWishlistsService
         newMessage.CreatedById = (ObjectId) GlobalUser.Id;
         newMessage.CreatedDateUtc = DateTime.UtcNow;
 
-        var relatedWishlistPage = await _wishlistsRepository.GetPageAsync(1, 1, x => x.Id == wishlistObjectId && x.CreatedById == GlobalUser.Id, cancellationToken);
-        var relatedWishlist = relatedWishlistPage.FirstOrDefault();
+        var relatedWishlist = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistObjectId && x.CreatedById == GlobalUser.Id, cancellationToken);
 
         if (relatedWishlist == null)
         {
@@ -70,5 +77,13 @@ public class WishlistsService : IWishlistsService
         var createdMessage = await _messagesRepository.AddAsync(newMessage, cancellationToken);
 
         return _mapper.Map<MessageDto>(createdMessage);
+    }
+
+    public async Task<PagedList<WishlistDto>> GetPersonalWishlistsPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken)
+    {
+        var entities = await _wishlistsRepository.GetPageAsync(pageNumber, pageSize, cancellationToken);
+        var dtos = _mapper.Map<List<WishlistDto>>(entities);
+        var count = await _wishlistsRepository.GetTotalCountAsync();
+        return new PagedList<WishlistDto>(dtos, pageNumber, pageSize, count);
     }
 }
