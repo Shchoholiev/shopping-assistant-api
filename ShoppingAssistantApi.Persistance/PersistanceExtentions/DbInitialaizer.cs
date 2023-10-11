@@ -23,6 +23,8 @@ public class DbInitialaizer
 
     private readonly ITokensService _tokensService;
 
+    private readonly IMongoCollection<User> _userCollection;
+
     private readonly IMongoCollection<Wishlist> _wishlistCollection;
 
     public IEnumerable<RoleDto> Roles { get; set; }
@@ -34,6 +36,7 @@ public class DbInitialaizer
         _userManager = serviceProvider.GetService<IUserManager>();
         _tokensService = serviceProvider.GetService<ITokensService>();
         _wishlistCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Wishlist>("Wishlists");
+        _userCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<User>("Users");
     }
 
     public async Task InitialaizeDb(CancellationToken cancellationToken)
@@ -166,35 +169,16 @@ public class DbInitialaizer
 
     public async Task AddWishlistsWithMessages(CancellationToken cancellationToken)
     {
-        var usersPage = await _usersService.GetUsersPageAsync(1, 2, cancellationToken);
-        var userList = usersPage.Items.ToList();
+        var user = await (await _userCollection.FindAsync(x => x.Email.Equals("shopping.assistant.team@gmail.com"))).FirstAsync();
 
         var wishlists = new Wishlist[]
         {
             new Wishlist
             {
-                Name = "Grandma's Birthday Gift",
-                Type = WishlistTypes.Gift.ToString(),
-                CreatedById = ObjectId.Parse(userList[0].Id),
-                Messages = new Message[]
-                {
-                    new Message
-                    {
-                        Text = "Prompt",
-                        Role = MessageRoles.User.ToString(),
-                    },
-                    new Message
-                    {
-                        Text = "Answer",
-                        Role = MessageRoles.Application.ToString(),
-                    },
-                }
-            },
-            new Wishlist
-            {
+                Id = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
                 Name = "Gaming PC",
                 Type = WishlistTypes.Product.ToString(),
-                CreatedById = ObjectId.Parse(userList[1].Id),
+                CreatedById = user.Id,
                 Messages = new Message[]
                 {
                     new Message

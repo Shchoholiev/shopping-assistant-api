@@ -13,6 +13,12 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
 {
     private readonly HttpClient _httpClient;
 
+    private const string WISHLIST_TESTING_USER_EMAIL = "shopping.assistant.team@gmail.com";
+
+    private const string WISHLIST_TESTING_USER_PASSWORD = "Yuiop12345";
+
+    private const string TESTING_WISHLIST_ID = "ab79cde6f69abcd3efab65cd";
+
     public WishlistsTests(TestingFactory<Program> factory)
     {
         _httpClient = factory.CreateClient();
@@ -22,7 +28,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     [Fact]
     public async Task StartPersonalWishlistAsync_ValidWishlistModel_ReturnsNewWishlistModels()
     {
-        var tokensModel = await AccessExtention.Login("shopping.assistant.team@gmail.com", "Yuiop12345", _httpClient);
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
         var user = await UserExtention.GetCurrentUser(_httpClient);
 
@@ -62,7 +68,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     [Fact]
     public async Task GetPersonalWishlistsPage_ValidPageNumberAndSize_ReturnsPage()
     {
-        var tokensModel = await AccessExtention.Login("shopping.assistant.team@gmail.com", "Yuiop12345", _httpClient);
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
         var user = await UserExtention.GetCurrentUser(_httpClient);
 
@@ -71,7 +77,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             query = "query personalWishlistsPage($pageNumber: Int!, $pageSize: Int!) { personalWishlistsPage(pageNumber: $pageNumber, pageSize: $pageSize) { items { createdById, id, name, type } } }",
             variables = new
             {
-                pageNumber = 3,
+                pageNumber = 1,
                 pageSize = 1
             }
         };
@@ -88,6 +94,9 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
 
         var personalWishlistsPageItems = Enumerable.ToList(document.data.personalWishlistsPage.items);
         var personalWishlistCreatedById = (string) personalWishlistsPageItems[0].createdById;
+        Console.WriteLine(personalWishlistsPageItems[0].id);
+        Console.WriteLine(personalWishlistsPageItems[0].name);
+        Console.WriteLine(personalWishlistsPageItems[0].type);
 
         Assert.NotEmpty(personalWishlistsPageItems);
         Assert.Equal(user.Id, personalWishlistCreatedById);
@@ -96,38 +105,9 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     [Fact]
     public async Task AddMessageToPersonalWishlist_ValidMessageModel_ReturnsNewMessageModel()
     {
-        var tokensModel = await AccessExtention.Login("shopping.assistant.team@gmail.com", "Yuiop12345", _httpClient);
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
         var user = await UserExtention.GetCurrentUser(_httpClient);
-
-        // Get personal wishlist
-
-        var query = new
-        {
-            query = "query personalWishlistsPage($pageNumber: Int!, $pageSize: Int!) { personalWishlistsPage(pageNumber: $pageNumber, pageSize: $pageSize) { items { createdById, id, name, type } } }",
-            variables = new
-            {
-                pageNumber = 3,
-                pageSize = 1
-            }
-        };
-
-        var jsonPayload = JsonConvert.SerializeObject(query);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-        using var personalWishlistPageResponse = await _httpClient.PostAsync("graphql", content);
-        personalWishlistPageResponse.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, personalWishlistPageResponse.StatusCode);
-
-        var responseString = await personalWishlistPageResponse.Content.ReadAsStringAsync();
-        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
-
-        var personalWishlistsPageItems = Enumerable.ToList(document.data.personalWishlistsPage.items);
-        var personalWishlistId = (string) personalWishlistsPageItems[0].id;
-
-        Assert.NotNull(personalWishlistId);
-
-        // Add message to personal wishlist
 
         const string MESSAGE_TEXT = "Second Message";
 
@@ -136,23 +116,23 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             query = "mutation addMessageToPersonalWishlist($wishlistId: String!, $dto: MessageCreateDtoInput!) { addMessageToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) { role, text, createdById } }",
             variables = new
             {
-                wishlistId = personalWishlistId,
+                wishlistId = TESTING_WISHLIST_ID,
                 dto = new
                 {
-                    text = MESSAGE_TEXT,
+                    text = MESSAGE_TEXT
                 }
             }
         };
 
-        jsonPayload = JsonConvert.SerializeObject(mutation);
-        content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-        using var addMessageToPersonalWishlistResponse = await _httpClient.PostAsync("graphql", content);
-        addMessageToPersonalWishlistResponse.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, addMessageToPersonalWishlistResponse.StatusCode);
+        using var response = await _httpClient.PostAsync("graphql", content);
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        responseString = await addMessageToPersonalWishlistResponse.Content.ReadAsStringAsync();
-        document = JsonConvert.DeserializeObject<dynamic>(responseString);
+        var responseString = await response.Content.ReadAsStringAsync();
+        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
 
         var messageRole = (string) document.data.addMessageToPersonalWishlist.role;
         var messageText = (string) document.data.addMessageToPersonalWishlist.text;
@@ -166,7 +146,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     [Fact]
     public async Task StartPersonalWishlistAsync_InvalidWishlistModel_ReturnsInternalServerError()
     {
-        var tokensModel = await AccessExtention.Login("shopping.assistant.team@gmail.com", "Yuiop12345", _httpClient);
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
         var user = await UserExtention.GetCurrentUser(_httpClient);
 
@@ -193,7 +173,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     [Fact]
     public async Task AddMessageToPersonalWishlist_InvalidMessageModel_ReturnsInternalServerError()
     {
-        var tokensModel = await AccessExtention.Login("shopping.assistant.team@gmail.com", "Yuiop12345", _httpClient);
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
         var user = await UserExtention.GetCurrentUser(_httpClient);
 
