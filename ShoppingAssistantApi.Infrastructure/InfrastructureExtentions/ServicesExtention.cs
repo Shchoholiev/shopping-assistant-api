@@ -14,6 +14,7 @@ public static class ServicesExtention
         services.AddScoped<IUserManager, UserManager>();
         services.AddScoped<ITokensService, TokensService>();
         services.AddScoped<IUsersService, UsersService>();
+        services.AddScoped<IWishlistsService, WishlistsService>();
 
         return services;
     }
