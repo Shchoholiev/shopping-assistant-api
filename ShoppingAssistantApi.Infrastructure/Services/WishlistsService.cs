@@ -86,4 +86,22 @@ public class WishlistsService : IWishlistsService
         var count = await _wishlistsRepository.GetTotalCountAsync();
         return new PagedList<WishlistDto>(dtos, pageNumber, pageSize, count);
     }
+
+    public async Task<WishlistDto> GetPersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+        var entity = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistObjectId && x.CreatedById == GlobalUser.Id, cancellationToken);
+
+        Console.WriteLine("     WISHLIST: " + entity.CreatedById + " " + GlobalUser.Id);
+
+        if (entity == null)
+        {
+            throw new UnAuthorizedException<Wishlist>();
+        }
+        
+        return _mapper.Map<WishlistDto>(entity);
+    }
 }

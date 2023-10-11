@@ -169,7 +169,8 @@ public class DbInitialaizer
 
     public async Task AddWishlistsWithMessages(CancellationToken cancellationToken)
     {
-        var user = await (await _userCollection.FindAsync(x => x.Email.Equals("shopping.assistant.team@gmail.com"))).FirstAsync();
+        var user1 = await (await _userCollection.FindAsync(x => x.Email.Equals("shopping.assistant.team@gmail.com"))).FirstAsync();
+        var user2 = await (await _userCollection.FindAsync(x => x.Email.Equals("mykhailo.bilodid@nure.ua"))).FirstAsync();
 
         var wishlists = new Wishlist[]
         {
@@ -178,7 +179,7 @@ public class DbInitialaizer
                 Id = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
                 Name = "Gaming PC",
                 Type = WishlistTypes.Product.ToString(),
-                CreatedById = user.Id,
+                CreatedById = user1.Id,
                 Messages = new Message[]
                 {
                     new Message
@@ -191,6 +192,21 @@ public class DbInitialaizer
                         Text = "Answer",
                         Role = MessageRoles.Application.ToString(),
                     },
+                }
+            },
+            new Wishlist
+            {
+                Id = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
+                Name = "Generic Wishlist Name",
+                Type = WishlistTypes.Product.ToString(),
+                CreatedById = user2.Id,
+                Messages = new Message[]
+                {
+                    new Message
+                    {
+                        Text = "Prompt",
+                        Role = MessageRoles.User.ToString(),
+                    }
                 }
             }
         };

@@ -11,4 +11,6 @@ public interface IWishlistsService
     Task<MessageDto> AddMessageToPersonalWishlistAsync(string wishlistId, MessageCreateDto dto, CancellationToken cancellationToken);
 
     Task<PagedList<WishlistDto>> GetPersonalWishlistsPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken);
+
+    Task<WishlistDto> GetPersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken);
 }

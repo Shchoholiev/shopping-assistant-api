@@ -12,4 +12,9 @@ public class WishlistsQuery
     public Task<PagedList<WishlistDto>> GetPersonalWishlistsPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken,
     [Service] IWishlistsService wishlistsService)
     => wishlistsService.GetPersonalWishlistsPageAsync(pageNumber, pageSize, cancellationToken);
+
+    [Authorize]
+    public Task<WishlistDto> GetPersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken,
+    [Service] IWishlistsService wishlistsService)
+    => wishlistsService.GetPersonalWishlistAsync(wishlistId, cancellationToken);
 }

@@ -94,11 +94,45 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
 
         var personalWishlistsPageItems = Enumerable.ToList(document.data.personalWishlistsPage.items);
         var personalWishlistCreatedById = (string) personalWishlistsPageItems[0].createdById;
-        Console.WriteLine(personalWishlistsPageItems[0].id);
-        Console.WriteLine(personalWishlistsPageItems[0].name);
-        Console.WriteLine(personalWishlistsPageItems[0].type);
 
         Assert.NotEmpty(personalWishlistsPageItems);
+        Assert.Equal(user.Id, personalWishlistCreatedById);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlist_ValidWishlistIdOrAuthorizedAccess_ReturnsWishlistDto()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var query = new
+        {
+            query = "query personalWishlist($wishlistId: String!) { personalWishlist(wishlistId: $wishlistId) { createdById, id, name, type } }",
+            variables = new
+            {
+                wishlistId = TESTING_WISHLIST_ID
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(query);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        var personalWishlistId = (string) document.data.personalWishlist.id;
+        var personalWishlistName = (string) document.data.personalWishlist.name;
+        var personalWishlistType = (string) document.data.personalWishlist.type;
+        var personalWishlistCreatedById = (string) document.data.personalWishlist.createdById;
+
+        Assert.Equal(TESTING_WISHLIST_ID, personalWishlistId);
+        Assert.Equal("Gaming PC", personalWishlistName);
+        Assert.Equal(WishlistTypes.Product.ToString(), personalWishlistType);
         Assert.Equal(user.Id, personalWishlistCreatedById);
     }
 
@@ -164,6 +198,52 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
         };
 
         var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlist_InvalidWishlistId_ReturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var query = new
+        {
+            query = "query personalWishlist($wishlistId: String!) { personalWishlist(wishlistId: $wishlistId) { createdById, id, name, type } }",
+            variables = new
+            {
+                wishlistId = "1234567890abcdef12345678" // Invalid wishlistId
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(query);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlist_UnAuthorizedAccess_ReturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var query = new
+        {
+            query = "query personalWishlist($wishlistId: String!) { personalWishlist(wishlistId: $wishlistId) { createdById, id, name, type } }",
+            variables = new
+            {
+                wishlistId = "ab6c2c2d9edf39abcd1ef9ab" // Other user's wishlist
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(query);
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.PostAsync("graphql", content);
