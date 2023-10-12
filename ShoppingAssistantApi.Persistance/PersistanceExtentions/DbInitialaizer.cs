@@ -23,9 +23,13 @@ public class DbInitialaizer
 
     private readonly ITokensService _tokensService;
 
+    private readonly IWishlistsService _wishlistsService;
+
     private readonly IMongoCollection<User> _userCollection;
 
     private readonly IMongoCollection<Wishlist> _wishlistCollection;
+    
+    private readonly IMongoCollection<Product> _productCollection;
 
     public IEnumerable<RoleDto> Roles { get; set; }
 
@@ -35,8 +39,10 @@ public class DbInitialaizer
         _rolesService = serviceProvider.GetService<IRolesService>();
         _userManager = serviceProvider.GetService<IUserManager>();
         _tokensService = serviceProvider.GetService<ITokensService>();
+        _wishlistsService = serviceProvider.GetService<IWishlistsService>();
         _wishlistCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Wishlist>("Wishlists");
         _userCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<User>("Users");
+        _productCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Product>("Product");
     }
 
     public async Task InitialaizeDb(CancellationToken cancellationToken)
@@ -212,5 +218,44 @@ public class DbInitialaizer
         };
 
         await _wishlistCollection.InsertManyAsync(wishlists);
+    }
+
+    public async Task AddProducts(CancellationToken cancellationToken)
+    {
+        var wishList1 = await _wishlistCollection.FindAsync(w => w.Name == "Gaming PC");
+        var wishList2 = await _wishlistCollection.FindAsync(w => w.Name == "Generic Wishlist Name");
+
+        var products = new Product[]
+        {
+            new Product()
+            {
+                Id = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
+                Url = "url",
+                Name = "Thermaltake Glacier",
+                Description = "Something",
+                Rating = 4.1,
+                ImagesUrls = new string[]
+                {
+                    "url1",
+                    "url2"
+                }
+            }, 
+            
+            new Product()
+            {
+                Id = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
+                Url = "url",
+                Name = "Mac",
+                Description = "very very cool laptop",
+                Rating = 4.9,
+                ImagesUrls = new string[]
+                {
+                    "url1",
+                    "url2"
+                }
+            }
+            
+        };
+        
     }
 }
