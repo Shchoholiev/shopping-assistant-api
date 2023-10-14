@@ -1,11 +1,13 @@
-﻿using MongoDB.Driver;
+﻿using MongoDB.Bson;
+using MongoDB.Driver;
+using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Domain.Common;
 using ShoppingAssistantApi.Persistance.Database;
 using System.Linq.Expressions;
 
 namespace ShoppingAssistantApi.Persistance.Repositories;
 
-public abstract class BaseRepository<TEntity> where TEntity : EntityBase
+public abstract class BaseRepository<TEntity> : IBaseRepository<TEntity> where TEntity : EntityBase
 {
     protected MongoDbContext _db;
 
@@ -15,6 +17,16 @@ public abstract class BaseRepository<TEntity> where TEntity : EntityBase
     {
         this._db = db;
         this._collection = _db.Db.GetCollection<TEntity>(collectionName);
+    }
+
+    public async Task<TEntity> GetOneAsync(ObjectId id, CancellationToken cancellationToken)
+    {
+        return await this._collection.Find(x => x.Id == id).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<TEntity> GetOneAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken)
+    {
+        return await this._collection.Find(predicate).FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken)
