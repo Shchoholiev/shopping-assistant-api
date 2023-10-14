@@ -67,12 +67,7 @@ public class WishlistsService : IWishlistsService
         newMessage.CreatedById = (ObjectId) GlobalUser.Id;
         newMessage.CreatedDateUtc = DateTime.UtcNow;
 
-        var relatedWishlist = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistObjectId && x.CreatedById == GlobalUser.Id, cancellationToken);
-
-        if (relatedWishlist == null)
-        {
-            throw new UnAuthorizedException<Wishlist>();
-        }
+        await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
 
         var createdMessage = await _messagesRepository.AddAsync(newMessage, cancellationToken);
 
@@ -93,15 +88,43 @@ public class WishlistsService : IWishlistsService
         {
             throw new InvalidDataException("Provided id is invalid.");
         }
-        var entity = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistObjectId && x.CreatedById == GlobalUser.Id, cancellationToken);
 
-        Console.WriteLine("     WISHLIST: " + entity.CreatedById + " " + GlobalUser.Id);
+        var entity = await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+        
+        return _mapper.Map<WishlistDto>(entity);
+    }
 
-        if (entity == null)
+    public async Task<WishlistDto> DeletePersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        var entity = await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+
+        entity.LastModifiedById = GlobalUser.Id;
+        entity.LastModifiedDateUtc = DateTime.UtcNow;
+
+        await _wishlistsRepository.DeleteAsync(entity, cancellationToken);
+
+        return _mapper.Map<WishlistDto>(entity);
+    }
+
+    private async Task<Wishlist> TryGetPersonalWishlist(ObjectId wishlistId, CancellationToken cancellationToken)
+    {
+        var entity = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistId, cancellationToken);
+
+        if (entity.CreatedById != GlobalUser.Id)
         {
             throw new UnAuthorizedException<Wishlist>();
         }
-        
-        return _mapper.Map<WishlistDto>(entity);
+
+        if (entity == null)
+        {
+            throw new EntityNotFoundException<Wishlist>();
+        }
+
+        return entity;
     }
 }

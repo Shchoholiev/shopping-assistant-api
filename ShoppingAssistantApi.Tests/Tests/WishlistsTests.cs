@@ -17,7 +17,15 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
 
     private const string WISHLIST_TESTING_USER_PASSWORD = "Yuiop12345";
 
-    private const string TESTING_WISHLIST_ID = "ab79cde6f69abcd3efab65cd";
+    private const string WISHLIST_TESTING_VALID_WISHLIST_ID = "ab79cde6f69abcd3efab65cd";
+
+    private const string WISHLIST_TESTING_VALID_WISHLIST_NAME = "Gaming PC";
+
+    private const WishlistTypes WISHLIST_TESTING_VALID_WISHLIST_TYPE = WishlistTypes.Product;
+
+    private const string WISHLIST_TESTING_INVALID_WISHLIST_ID = "1234567890abcdef12345678";
+
+    private const string WISHLIST_TESTING_OTHER_USER_WISHLIST_ID = "ab6c2c2d9edf39abcd1ef9ab";
 
     public WishlistsTests(TestingFactory<Program> factory)
     {
@@ -111,7 +119,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             query = "query personalWishlist($wishlistId: String!) { personalWishlist(wishlistId: $wishlistId) { createdById, id, name, type } }",
             variables = new
             {
-                wishlistId = TESTING_WISHLIST_ID
+                wishlistId = WISHLIST_TESTING_VALID_WISHLIST_ID
             }
         };
 
@@ -130,9 +138,9 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
         var personalWishlistType = (string) document.data.personalWishlist.type;
         var personalWishlistCreatedById = (string) document.data.personalWishlist.createdById;
 
-        Assert.Equal(TESTING_WISHLIST_ID, personalWishlistId);
-        Assert.Equal("Gaming PC", personalWishlistName);
-        Assert.Equal(WishlistTypes.Product.ToString(), personalWishlistType);
+        Assert.Equal(WISHLIST_TESTING_VALID_WISHLIST_ID, personalWishlistId);
+        Assert.Equal(WISHLIST_TESTING_VALID_WISHLIST_NAME, personalWishlistName);
+        Assert.Equal(WISHLIST_TESTING_VALID_WISHLIST_TYPE.ToString(), personalWishlistType);
         Assert.Equal(user.Id, personalWishlistCreatedById);
     }
 
@@ -150,7 +158,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             query = "mutation addMessageToPersonalWishlist($wishlistId: String!, $dto: MessageCreateDtoInput!) { addMessageToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) { role, text, createdById } }",
             variables = new
             {
-                wishlistId = TESTING_WISHLIST_ID,
+                wishlistId = WISHLIST_TESTING_VALID_WISHLIST_ID,
                 dto = new
                 {
                     text = MESSAGE_TEXT
@@ -175,6 +183,42 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
         Assert.Equal(MessageRoles.User.ToString(), messageRole);
         Assert.Equal(MESSAGE_TEXT, messageText);
         Assert.Equal(user.Id, messageCreatedById);
+    }
+
+    [Fact]
+    public async Task DeletePersonalWishlist_ValidWishlistIdOrAuthorizedAccess_ReturnsWishlistModel()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "mutation deletePersonalWishlist($wishlistId: String!) { deletePersonalWishlist (wishlistId: $wishlistId) { createdById, id, name, type } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_VALID_WISHLIST_ID
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        var personalWishlistId = (string) document.data.deletePersonalWishlist.id;
+        var personalWishlistName = (string) document.data.deletePersonalWishlist.name;
+        var personalWishlistType = (string) document.data.deletePersonalWishlist.type;
+        var personalWishlistCreatedById = (string) document.data.deletePersonalWishlist.createdById;
+
+        Assert.Equal(WISHLIST_TESTING_VALID_WISHLIST_ID, personalWishlistId);
+        Assert.Equal(WISHLIST_TESTING_VALID_WISHLIST_NAME, personalWishlistName);
+        Assert.Equal(WISHLIST_TESTING_VALID_WISHLIST_TYPE.ToString(), personalWishlistType);
+        Assert.Equal(user.Id, personalWishlistCreatedById);
     }
 
     [Fact]
@@ -216,7 +260,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             query = "query personalWishlist($wishlistId: String!) { personalWishlist(wishlistId: $wishlistId) { createdById, id, name, type } }",
             variables = new
             {
-                wishlistId = "1234567890abcdef12345678" // Invalid wishlistId
+                wishlistId = WISHLIST_TESTING_INVALID_WISHLIST_ID
             }
         };
 
@@ -239,7 +283,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             query = "query personalWishlist($wishlistId: String!) { personalWishlist(wishlistId: $wishlistId) { createdById, id, name, type } }",
             variables = new
             {
-                wishlistId = "ab6c2c2d9edf39abcd1ef9ab" // Other user's wishlist
+                wishlistId = WISHLIST_TESTING_OTHER_USER_WISHLIST_ID
             }
         };
 
@@ -264,11 +308,34 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             query = "mutation addMessageToPersonalWishlist($wishlistId: String!, $dto: MessageCreateDtoInput!) { addMessageToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) { role, text, createdById } }",
             variables = new
             {
-                wishlistId = "8125jad7g12", // Invalid wishlistId
+                wishlistId = WISHLIST_TESTING_INVALID_WISHLIST_ID, 
                 dto = new
                 {
                     text = MESSAGE_TEXT,
                 }
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeletePersonalWishlist_InValidWishlistId_ReturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "mutation deletePersonalWishlist($wishlistId: String!) { deletePersonalWishlist (wishlistId: $wishlistId) { createdById, id, name, type } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_INVALID_WISHLIST_ID
             }
         };
 

@@ -14,4 +14,8 @@ public class WishlistsMutation
     public Task<MessageDto> AddMessageToPersonalWishlist(string wishlistId, MessageCreateDto dto, CancellationToken cancellationToken,
         [Service] IWishlistsService wishlistsService)
         => wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, dto, cancellationToken);
+
+    public Task<WishlistDto> DeletePersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken,
+        [Service] IWishlistsService wishlistsService)
+        => wishlistsService.DeletePersonalWishlistAsync(wishlistId, cancellationToken);
 }
