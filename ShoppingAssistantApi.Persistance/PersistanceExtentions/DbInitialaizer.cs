@@ -236,7 +236,8 @@ public class DbInitialaizer
                     "https://m.media-amazon.com/images/I/61cXu9yGldL._AC_SL1200_.jpg",
                     "https://m.media-amazon.com/images/I/615gxSGp42L._AC_SL1200_.jpg"
                 },
-                CreatedDateUtc = DateTime.UtcNow
+                CreatedDateUtc = DateTime.UtcNow,
+                WasOpened = false
             }, 
             
             new Product()
@@ -252,7 +253,8 @@ public class DbInitialaizer
                     "https://m.media-amazon.com/images/I/51v4pgChtLL._AC_SX679_.jpg",
                     "https://m.media-amazon.com/images/I/61mJ0z7uYQL._AC_SX679_.jpg"
                 },
-                CreatedDateUtc = DateTime.UtcNow
+                CreatedDateUtc = DateTime.UtcNow,
+                WasOpened = false
             },
             
             new Product()
@@ -268,7 +270,8 @@ public class DbInitialaizer
                     "https://m.media-amazon.com/images/I/71al70zP7QL._AC_SX466_.jpg",
                     "https://m.media-amazon.com/images/I/71+JXDDY01L._AC_SX466_.jpg"
                 },
-                CreatedDateUtc = DateTime.UtcNow
+                CreatedDateUtc = DateTime.UtcNow,
+                WasOpened = false
             },
             
             new Product()
@@ -284,7 +287,8 @@ public class DbInitialaizer
                     "https://m.media-amazon.com/images/I/6170mJHIsYL._AC_SX466_.jpg",
                     "https://m.media-amazon.com/images/I/71a5As76MDL._AC_SX466_.jpg"
                 },
-                CreatedDateUtc = DateTime.UtcNow
+                CreatedDateUtc = DateTime.UtcNow,
+                WasOpened = false
             }
         };
 

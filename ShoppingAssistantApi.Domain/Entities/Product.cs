@@ -16,4 +16,6 @@ public class Product : EntityBase
     public double Rating { get; set; }
     
     public string[]? ImagesUrls { get; set; }
+    
+    public bool WasOpened { get; set; }
 }
