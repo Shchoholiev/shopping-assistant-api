@@ -50,6 +50,7 @@ public class DbInitialaizer
         await AddRoles(cancellationToken);
         await AddUsers(cancellationToken);
         await AddWishlistsWithMessages(cancellationToken);
+        await AddProducts(cancellationToken);
     }
 
     public async Task AddUsers(CancellationToken cancellationToken)
@@ -192,11 +193,17 @@ public class DbInitialaizer
                     {
                         Text = "Prompt",
                         Role = MessageRoles.User.ToString(),
+                        WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
+                        CreatedById = user1.Id,
+                        CreatedDateUtc = DateTime.UtcNow
                     },
                     new Message
                     {
                         Text = "Answer",
                         Role = MessageRoles.Application.ToString(),
+                        WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
+                        CreatedById = user1.Id,
+                        CreatedDateUtc = DateTime.UtcNow
                     },
                 }
             },
@@ -212,6 +219,9 @@ public class DbInitialaizer
                     {
                         Text = "Prompt",
                         Role = MessageRoles.User.ToString(),
+                        WishlistId = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
+                        CreatedById = user1.Id,
+                        CreatedDateUtc = DateTime.UtcNow
                     }
                 }
             }
@@ -237,7 +247,8 @@ public class DbInitialaizer
                     "https://m.media-amazon.com/images/I/615gxSGp42L._AC_SL1200_.jpg"
                 },
                 CreatedDateUtc = DateTime.UtcNow,
-                WasOpened = false
+                WasOpened = false,
+                WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd")
             }, 
             
             new Product()
@@ -254,7 +265,8 @@ public class DbInitialaizer
                     "https://m.media-amazon.com/images/I/61mJ0z7uYQL._AC_SX679_.jpg"
                 },
                 CreatedDateUtc = DateTime.UtcNow,
-                WasOpened = false
+                WasOpened = false,
+                WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd")
             },
             
             new Product()
@@ -271,7 +283,8 @@ public class DbInitialaizer
                     "https://m.media-amazon.com/images/I/71+JXDDY01L._AC_SX466_.jpg"
                 },
                 CreatedDateUtc = DateTime.UtcNow,
-                WasOpened = false
+                WasOpened = false,
+                WishlistId = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab")
             },
             
             new Product()
@@ -288,7 +301,8 @@ public class DbInitialaizer
                     "https://m.media-amazon.com/images/I/71a5As76MDL._AC_SX466_.jpg"
                 },
                 CreatedDateUtc = DateTime.UtcNow,
-                WasOpened = false
+                WasOpened = false,
+                WishlistId = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab")
             }
         };
 
