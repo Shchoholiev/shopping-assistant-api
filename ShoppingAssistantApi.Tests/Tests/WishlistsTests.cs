@@ -212,13 +212,14 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
         var responseString = await response.Content.ReadAsStringAsync();
         var document = JsonConvert.DeserializeObject<dynamic>(responseString);
 
+        Console.WriteLine(document);
+
         var messagesPageFromPersonalWishlist = Enumerable.ToList(document.data.messagesPageFromPersonalWishlist.items);
         var firstMessageInPage = messagesPageFromPersonalWishlist[0];
         var secondMessageInPage = messagesPageFromPersonalWishlist[1];
 
-        Assert.Equal("Message 5", (string) firstMessageInPage.text);
-        Assert.Equal(MessageRoles.User.ToString(), (string) firstMessageInPage.role);
-        Assert.Equal(user.Id, (string) firstMessageInPage.createdById);
+        Assert.Equal("Message 6", (string) firstMessageInPage.text);
+        Assert.Equal(MessageRoles.Application.ToString(), (string) firstMessageInPage.role);
     }
 
     [Fact]
@@ -606,9 +607,8 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
         var firstMessageInPage = messagesPageFromPersonalWishlist[0];
         var secondMessageInPage = messagesPageFromPersonalWishlist[1];
 
-        Assert.Equal("Message 1", (string) firstMessageInPage.text);
-        Assert.Equal(MessageRoles.User.ToString(), (string) firstMessageInPage.role);
-        Assert.Equal(user.Id, (string) firstMessageInPage.createdById);
+        Assert.Equal("Message 6", (string) firstMessageInPage.text);
+        Assert.Equal(MessageRoles.Application.ToString(), (string) firstMessageInPage.role);
     }
 
     [Fact]

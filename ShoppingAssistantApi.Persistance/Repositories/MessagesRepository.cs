@@ -12,29 +12,9 @@ public class MessagesRepository : BaseRepository<Message>, IMessagesRepository
 
     public async Task<List<Message>> GetPageStartingFromEndAsync(int pageNumber, int pageSize, Expression<Func<Message, bool>> predicate, CancellationToken cancellationToken)
     {
-        var messageCount = await GetCountAsync(predicate, cancellationToken);
-
-        pageSize = Math.Clamp(pageSize, 1, messageCount);
-        var numberOfPages = messageCount / pageSize;
-
-        if (pageNumber > numberOfPages)
-        {
-            return new List<Message>();
-        }
-
-        if (pageNumber < 1)
-        {
-            throw new ArgumentOutOfRangeException();
-        }
-
-        if (pageSize < 1)
-        {
-            throw new ArgumentOutOfRangeException();
-        }
-
         return await _collection.Find(predicate)
-                                .SortBy(x => x.CreatedDateUtc)
-                                .Skip((numberOfPages - pageNumber) * pageSize)
+                                .SortByDescending(x => x.CreatedDateUtc)
+                                .Skip((pageNumber - 1) * pageSize)
                                 .Limit(pageSize)
                                 .ToListAsync(cancellationToken);
     }
