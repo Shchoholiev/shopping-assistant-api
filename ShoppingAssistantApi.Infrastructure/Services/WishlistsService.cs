@@ -47,6 +47,8 @@ public class WishlistsService : IWishlistsService
         {
             Text = dto.FirstMessageText,
             Role = MessageRoles.User.ToString(),
+            CreatedById = (ObjectId) GlobalUser.Id,
+            CreatedDateUtc = DateTime.UtcNow,
             WishlistId = createdWishlist.Id
         };
         var createdMessage = await _messagesRepository.AddAsync(newMessage, cancellationToken);
@@ -62,10 +64,11 @@ public class WishlistsService : IWishlistsService
         {
             throw new InvalidDataException("Provided id is invalid.");
         }
-        newMessage.WishlistId = wishlistObjectId;
+
         newMessage.Role = MessageRoles.User.ToString();
         newMessage.CreatedById = (ObjectId) GlobalUser.Id;
         newMessage.CreatedDateUtc = DateTime.UtcNow;
+        newMessage.WishlistId = wishlistObjectId;
 
         await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
 
@@ -92,6 +95,22 @@ public class WishlistsService : IWishlistsService
         var entity = await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
         
         return _mapper.Map<WishlistDto>(entity);
+    }
+
+    public async Task<PagedList<MessageDto>> GetMessagesPageFromPersonalWishlistAsync(string wishlistId, int pageNumber, int pageSize, CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+
+        var entities = await _messagesRepository.GetPageStartingFromEndAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId, cancellationToken);
+
+        var dtos = _mapper.Map<List<MessageDto>>(entities);
+        var count = await _messagesRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId, cancellationToken);
+        return new PagedList<MessageDto>(dtos, pageNumber, pageSize, count);
     }
 
     public async Task<WishlistDto> DeletePersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken)

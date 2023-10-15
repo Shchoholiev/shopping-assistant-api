@@ -27,6 +27,8 @@ public class DbInitialaizer
 
     private readonly IMongoCollection<Wishlist> _wishlistCollection;
 
+    private readonly IMongoCollection<Message> _messageCollection;
+
     public IEnumerable<RoleDto> Roles { get; set; }
 
     public DbInitialaizer(IServiceProvider serviceProvider)
@@ -35,8 +37,9 @@ public class DbInitialaizer
         _rolesService = serviceProvider.GetService<IRolesService>();
         _userManager = serviceProvider.GetService<IUserManager>();
         _tokensService = serviceProvider.GetService<ITokensService>();
-        _wishlistCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Wishlist>("Wishlists");
         _userCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<User>("Users");
+        _wishlistCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Wishlist>("Wishlists");
+        _messageCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Message>("Messages");
     }
 
     public async Task InitialaizeDb(CancellationToken cancellationToken)
@@ -172,45 +175,79 @@ public class DbInitialaizer
         var user1 = await (await _userCollection.FindAsync(x => x.Email.Equals("shopping.assistant.team@gmail.com"))).FirstAsync();
         var user2 = await (await _userCollection.FindAsync(x => x.Email.Equals("mykhailo.bilodid@nure.ua"))).FirstAsync();
 
+        var wishlistId1 = ObjectId.Parse("ab79cde6f69abcd3efab65cd");
+        var wishlistId2 = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab");
+
         var wishlists = new Wishlist[]
         {
             new Wishlist
             {
-                Id = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
+                Id = wishlistId1,
                 Name = "Gaming PC",
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user1.Id,
-                Messages = new Message[]
-                {
-                    new Message
-                    {
-                        Text = "Prompt",
-                        Role = MessageRoles.User.ToString(),
-                    },
-                    new Message
-                    {
-                        Text = "Answer",
-                        Role = MessageRoles.Application.ToString(),
-                    },
-                }
             },
             new Wishlist
             {
-                Id = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
+                Id = wishlistId2,
                 Name = "Generic Wishlist Name",
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user2.Id,
-                Messages = new Message[]
-                {
-                    new Message
-                    {
-                        Text = "Prompt",
-                        Role = MessageRoles.User.ToString(),
-                    }
-                }
             }
         };
 
         await _wishlistCollection.InsertManyAsync(wishlists);
+
+        var messages = new Message[]
+        {
+            new Message
+            {
+                Text = "Message 1",
+                Role = MessageRoles.User.ToString(),
+                WishlistId = wishlistId1,
+                CreatedById = user1.Id,
+            },
+            new Message
+            {
+                Text = "Message 2",
+                Role = MessageRoles.Application.ToString(),
+                WishlistId = wishlistId1,
+            },
+            new Message
+            {
+                Text = "Message 3",
+                Role = MessageRoles.User.ToString(),
+                WishlistId = wishlistId1,
+                CreatedById = user1.Id,
+            },
+            new Message
+            {
+                Text = "Message 4",
+                Role = MessageRoles.Application.ToString(),
+                WishlistId = wishlistId1,
+            },
+            new Message
+            {
+                Text = "Message 5",
+                Role = MessageRoles.User.ToString(),
+                WishlistId = wishlistId1,
+                CreatedById = user1.Id,
+            },
+            new Message
+            {
+                Text = "Message 6",
+                Role = MessageRoles.Application.ToString(),
+                WishlistId = wishlistId1,
+            },
+            new Message
+            {
+                Text = "Prompt",
+                Role = MessageRoles.User.ToString(),
+                WishlistId = wishlistId2,
+                CreatedById = user2.Id,
+            }
+        };
+
+        await _messageCollection.InsertManyAsync(messages);
     }
 }

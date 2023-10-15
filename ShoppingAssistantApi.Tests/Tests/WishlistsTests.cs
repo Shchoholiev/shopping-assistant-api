@@ -186,6 +186,44 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     }
 
     [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_ValidPageNumberAndSizeValidWishlistIdOrAuthorizedAccess_ReturnsWishlistModel()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) { messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) { hasNextPage, hasPreviousPage, items { id, text, role, createdById }, pageNumber, pageSize, totalItems, totalPages } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_VALID_WISHLIST_ID,
+                pageNumber = 1,
+                pageSize = 2
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        Console.WriteLine(document.data.messagesPageFromPersonalWishlist);
+
+        var messagesPageFromPersonalWishlist = Enumerable.ToList(document.data.messagesPageFromPersonalWishlist.items);
+        var firstMessageInPage = messagesPageFromPersonalWishlist[0];
+        var secondMessageInPage = messagesPageFromPersonalWishlist[1];
+
+        Assert.Equal("Message 5", (string) firstMessageInPage.text);
+        Assert.Equal(MessageRoles.User.ToString(), (string) firstMessageInPage.role);
+        Assert.Equal(user.Id, (string) firstMessageInPage.createdById);
+    }
+
+    [Fact]
     public async Task DeletePersonalWishlist_ValidWishlistIdOrAuthorizedAccess_ReturnsWishlistModel()
     {
         var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
@@ -324,6 +362,106 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     }
 
     [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_InValidPageNumber_ReturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) { messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) { hasNextPage, hasPreviousPage, items { id, text, role, createdById }, pageNumber, pageSize, totalItems, totalPages } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_VALID_WISHLIST_ID,
+                pageNumber = 4,
+                pageSize = 2
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_InValidPageSize_ReturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) { messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) { hasNextPage, hasPreviousPage, items { id, text, role, createdById }, pageNumber, pageSize, totalItems, totalPages } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_VALID_WISHLIST_ID,
+                pageNumber = 1,
+                pageSize = 10
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_InValidWishlistId_ReturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) { messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) { hasNextPage, hasPreviousPage, items { id, text, role, createdById }, pageNumber, pageSize, totalItems, totalPages } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_INVALID_WISHLIST_ID,
+                pageNumber = 1,
+                pageSize = 2
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_UnAuthorizedAccess_ReturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) { messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) { hasNextPage, hasPreviousPage, items { id, text, role, createdById }, pageNumber, pageSize, totalItems, totalPages } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_OTHER_USER_WISHLIST_ID,
+                pageNumber = 1,
+                pageSize = 2
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
     public async Task DeletePersonalWishlist_InValidWishlistId_ReturnsInternalServerError()
     {
         var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
@@ -336,6 +474,29 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             variables = new
             {
                 wishlistId = WISHLIST_TESTING_INVALID_WISHLIST_ID
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeletePersonalWishlist_UnAuthorizedAccess_ReturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "mutation deletePersonalWishlist($wishlistId: String!) { deletePersonalWishlist (wishlistId: $wishlistId) { createdById, id, name, type } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_OTHER_USER_WISHLIST_ID
             }
         };
 

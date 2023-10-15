@@ -14,5 +14,7 @@ public interface IWishlistsService
 
     Task<WishlistDto> GetPersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken);
 
+    Task<PagedList<MessageDto>> GetMessagesPageFromPersonalWishlistAsync(string wishlistId, int pageNumber, int pageSize, CancellationToken cancellationToken);
+
     Task<WishlistDto> DeletePersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken);
 }
