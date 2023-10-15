@@ -310,6 +310,8 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
         var responseString = await response.Content.ReadAsStringAsync();
         var document = JsonConvert.DeserializeObject<dynamic>(responseString);
 
+        Console.WriteLine(document);
+
         var personalWishlistsPageItems = Enumerable.ToList(document.data.personalWishlistsPage.items);
 
         Assert.Empty(personalWishlistsPageItems);
@@ -341,6 +343,9 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
 
         var responseString = await response.Content.ReadAsStringAsync();
         var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        Console.WriteLine(document);
+
 
         var personalWishlistsPageItems = Enumerable.ToList(document.data.personalWishlistsPage.items);
         var personalWishlistCreatedById = (string) personalWishlistsPageItems[0].createdById;
@@ -446,7 +451,17 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.PostAsync("graphql", content);
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        Console.WriteLine(document);
+
+
+        var messagesPageFromPersonalWishlistItems = Enumerable.ToList(document.data.messagesPageFromPersonalWishlist.items);
+
+        Assert.Empty(messagesPageFromPersonalWishlistItems);
     }
 
     [Fact]
@@ -475,6 +490,9 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
 
         var responseString = await response.Content.ReadAsStringAsync();
         var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        Console.WriteLine(document);
+
 
         var messagesPageFromPersonalWishlist = Enumerable.ToList(document.data.messagesPageFromPersonalWishlist.items);
         var firstMessageInPage = messagesPageFromPersonalWishlist[0];

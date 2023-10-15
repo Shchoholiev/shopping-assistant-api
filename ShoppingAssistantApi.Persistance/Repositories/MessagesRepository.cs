@@ -17,6 +17,21 @@ public class MessagesRepository : BaseRepository<Message>, IMessagesRepository
         pageSize = Math.Clamp(pageSize, 1, messageCount);
         var numberOfPages = messageCount / pageSize;
 
+        if (pageNumber > numberOfPages)
+        {
+            return new List<Message>();
+        }
+
+        if (pageNumber < 1)
+        {
+            throw new ArgumentOutOfRangeException();
+        }
+
+        if (pageSize < 1)
+        {
+            throw new ArgumentOutOfRangeException();
+        }
+
         return await _collection.Find(predicate)
                                 .Skip((numberOfPages - pageNumber) * pageSize)
                                 .Limit(pageSize)
