@@ -86,7 +86,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             variables = new
             {
                 pageNumber = 1,
-                pageSize = 1
+                pageSize = 5
             }
         };
 
@@ -212,8 +212,6 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
         var responseString = await response.Content.ReadAsStringAsync();
         var document = JsonConvert.DeserializeObject<dynamic>(responseString);
 
-        Console.WriteLine(document.data.messagesPageFromPersonalWishlist);
-
         var messagesPageFromPersonalWishlist = Enumerable.ToList(document.data.messagesPageFromPersonalWishlist.items);
         var firstMessageInPage = messagesPageFromPersonalWishlist[0];
         var secondMessageInPage = messagesPageFromPersonalWishlist[1];
@@ -284,6 +282,71 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
 
         using var response = await _httpClient.PostAsync("graphql", content);
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlistsPage_InValidPageNumber_ReturnsEmptyList()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var query = new
+        {
+            query = "query personalWishlistsPage($pageNumber: Int!, $pageSize: Int!) { personalWishlistsPage(pageNumber: $pageNumber, pageSize: $pageSize) { items { createdById, id, name, type } } }",
+            variables = new
+            {
+                pageNumber = 100,
+                pageSize = 1
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(query);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        var personalWishlistsPageItems = Enumerable.ToList(document.data.personalWishlistsPage.items);
+
+        Assert.Empty(personalWishlistsPageItems);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlistsPage_InValidPageSize_ReturnsPage()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var query = new
+        {
+            query = "query personalWishlistsPage($pageNumber: Int!, $pageSize: Int!) { personalWishlistsPage(pageNumber: $pageNumber, pageSize: $pageSize) { items { createdById, id, name, type } } }",
+            variables = new
+            {
+                pageNumber = 1,
+                pageSize = 100
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(query);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        var personalWishlistsPageItems = Enumerable.ToList(document.data.personalWishlistsPage.items);
+        var personalWishlistCreatedById = (string) personalWishlistsPageItems[0].createdById;
+
+        Assert.NotEmpty(personalWishlistsPageItems);
+        Assert.Equal(user.Id, personalWishlistCreatedById);
     }
 
     [Fact]
@@ -362,7 +425,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     }
 
     [Fact]
-    public async Task GetMessagesPageFromPersonalWishlist_InValidPageNumber_ReturnsInternalServerError()
+    public async Task GetMessagesPageFromPersonalWishlist_InValidPageNumber_ReturnsEmptyList()
     {
         var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
@@ -387,7 +450,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     }
 
     [Fact]
-    public async Task GetMessagesPageFromPersonalWishlist_InValidPageSize_ReturnsInternalServerError()
+    public async Task GetMessagesPageFromPersonalWishlist_InValidPageSize_ReturnsPage()
     {
         var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
@@ -408,7 +471,18 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
         var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
         using var response = await _httpClient.PostAsync("graphql", content);
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        var messagesPageFromPersonalWishlist = Enumerable.ToList(document.data.messagesPageFromPersonalWishlist.items);
+        var firstMessageInPage = messagesPageFromPersonalWishlist[0];
+        var secondMessageInPage = messagesPageFromPersonalWishlist[1];
+
+        Assert.Equal("Message 1", (string) firstMessageInPage.text);
+        Assert.Equal(MessageRoles.User.ToString(), (string) firstMessageInPage.role);
+        Assert.Equal(user.Id, (string) firstMessageInPage.createdById);
     }
 
     [Fact]

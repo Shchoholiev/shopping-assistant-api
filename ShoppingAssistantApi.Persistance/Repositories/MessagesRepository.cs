@@ -14,8 +14,11 @@ public class MessagesRepository : BaseRepository<Message>, IMessagesRepository
     {
         var messageCount = await GetCountAsync(predicate, cancellationToken);
 
+        pageSize = Math.Clamp(pageSize, 1, messageCount);
+        var numberOfPages = messageCount / pageSize;
+
         return await _collection.Find(predicate)
-                                .Skip((messageCount / pageSize - pageNumber) * pageSize)
+                                .Skip((numberOfPages - pageNumber) * pageSize)
                                 .Limit(pageSize)
                                 .ToListAsync(cancellationToken);
     }

@@ -79,7 +79,7 @@ public class WishlistsService : IWishlistsService
 
     public async Task<PagedList<WishlistDto>> GetPersonalWishlistsPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken)
     {
-        var entities = await _wishlistsRepository.GetPageAsync(pageNumber, pageSize, cancellationToken);
+        var entities = await _wishlistsRepository.GetPageAsync(pageNumber, pageSize, x => x.CreatedById == GlobalUser.Id, cancellationToken);
         var dtos = _mapper.Map<List<WishlistDto>>(entities);
         var count = await _wishlistsRepository.GetTotalCountAsync();
         return new PagedList<WishlistDto>(dtos, pageNumber, pageSize, count);
