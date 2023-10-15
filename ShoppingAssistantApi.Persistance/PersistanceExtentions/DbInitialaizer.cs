@@ -50,7 +50,6 @@ public class DbInitialaizer
         await AddRoles(cancellationToken);
         await AddUsers(cancellationToken);
         await AddWishlistsWithMessages(cancellationToken);
-        await AddProducts(cancellationToken);
     }
 
     public async Task AddUsers(CancellationToken cancellationToken)
