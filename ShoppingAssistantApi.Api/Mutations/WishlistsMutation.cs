@@ -8,14 +8,18 @@ namespace ShoppingAssistantApi.Api.Mutations;
 public class WishlistsMutation
 {
     public Task<WishlistDto> StartPersonalWishlistAsync(WishlistCreateDto dto, CancellationToken cancellationToken,
-        [Service] IWishlistsService wishlistsService)
+            [Service] IWishlistsService wishlistsService)
         => wishlistsService.StartPersonalWishlistAsync(dto, cancellationToken);
 
     public Task<MessageDto> AddMessageToPersonalWishlistAsync(string wishlistId, MessageCreateDto dto, CancellationToken cancellationToken,
-        [Service] IWishlistsService wishlistsService)
+            [Service] IWishlistsService wishlistsService)
         => wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, dto, cancellationToken);
 
+    public Task<ProductDto> AddProductToPersonalWishlistAsync(string wishlistId, ProductCreateDto dto, CancellationToken cancellationToken,
+            [Service] IWishlistsService wishlistsService)
+        => wishlistsService.AddProductToPersonalWishlistAsync(wishlistId, dto, cancellationToken);
+
     public Task<WishlistDto> DeletePersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken,
-        [Service] IWishlistsService wishlistsService)
+            [Service] IWishlistsService wishlistsService)
         => wishlistsService.DeletePersonalWishlistAsync(wishlistId, cancellationToken);
 }

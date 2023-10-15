@@ -18,7 +18,7 @@ public class WishlistsService : IWishlistsService
 
     private readonly IMessagesRepository _messagesRepository;
 
-    private readonly IProductsRepository _productRepository;
+    private readonly IProductsRepository _productsRepository;
 
     private readonly IMapper _mapper;
 
@@ -26,7 +26,7 @@ public class WishlistsService : IWishlistsService
     {
         _wishlistsRepository = wishlistRepository;
         _messagesRepository = messageRepository;
-        _productRepository = productRepository;
+        _productsRepository = productRepository;
         _mapper = mapper;
     }
 
@@ -116,6 +116,26 @@ public class WishlistsService : IWishlistsService
         return new PagedList<MessageDto>(dtos, pageNumber, pageSize, count);
     }
 
+    public async Task<ProductDto> AddProductToPersonalWishlistAsync(string wishlistId, ProductCreateDto dto, CancellationToken cancellationToken)
+    {
+        var newProduct = _mapper.Map<Product>(dto);
+
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+        
+        newProduct.CreatedById = (ObjectId) GlobalUser.Id;
+        newProduct.CreatedDateUtc = DateTime.UtcNow;
+        newProduct.WishlistId = wishlistObjectId;
+
+        var createdProduct = await _productsRepository.AddAsync(newProduct, cancellationToken);
+
+        return _mapper.Map<ProductDto>(createdProduct);
+    }
+
     public async Task<PagedList<ProductDto>> GetProductsPageFromPersonalWishlistAsync(string wishlistId, int pageNumber, int pageSize, CancellationToken cancellationToken)
     {
         if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
@@ -125,15 +145,10 @@ public class WishlistsService : IWishlistsService
 
         await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
 
-        var entities = await _productRepository.GetPageAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId, cancellationToken);
-
-        foreach (var e in entities)
-        {
-            Console.WriteLine(e.Name);
-        }
+        var entities = await _productsRepository.GetPageAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId, cancellationToken);
 
         var dtos = _mapper.Map<List<ProductDto>>(entities);
-        var count = await _productRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId, cancellationToken);
+        var count = await _productsRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId, cancellationToken);
         return new PagedList<ProductDto>(dtos, pageNumber, pageSize, count);
     }
 

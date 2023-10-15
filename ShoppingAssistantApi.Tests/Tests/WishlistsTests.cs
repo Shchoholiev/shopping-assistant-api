@@ -222,6 +222,51 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     }
 
     [Fact]
+    public async Task AddProductToPersonalWishlist_ValidMessageModel_ReturnsNewProductModel()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "mutation addProductToPersonalWishlist($wishlistId: String!, $dto: ProductCreateDtoInput!) { addProductToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) { url, name, description, rating, imagesUrls, wasOpened } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_VALID_WISHLIST_ID,
+                dto = new
+                {
+                    url = "https://www.amazon.com/url",
+                    name = "Generic name",
+                    description = "Generic description",
+                    rating = 4.8,
+                    imagesUrls = new string[]
+                    {
+                        "https://www.amazon.com/image-url-1",
+                        "https://www.amazon.com/image-url-2"
+                    },
+                    wasOpened = false
+                }
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var responseString = await response.Content.ReadAsStringAsync();
+        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
+
+        Assert.Equal("https://www.amazon.com/url", (string) document.data.addProductToPersonalWishlist.url);
+        Assert.Equal("Generic name", (string) document.data.addProductToPersonalWishlist.name);
+        Assert.Equal("Generic description", (string) document.data.addProductToPersonalWishlist.description);
+        Assert.Equal(4.8, (double) document.data.addProductToPersonalWishlist.rating);
+        Assert.Equal("https://www.amazon.com/image-url-1", (string) document.data.addProductToPersonalWishlist.imagesUrls[0]);
+    }
+
+    [Fact]
     public async Task GetProductsPageFromPersonalWishlist_ValidPageNumberAndSizeValidWishlistIdOrAuthorizedAccess_ReturnsPage()
     {
         var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
@@ -435,7 +480,7 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
     }
 
     [Fact]
-    public async Task AddMessageToPersonalWishlist_InvalidMessageModel_ReturnsInternalServerError()
+    public async Task AddMessageToPersonalWishlist_InvalidWishlistId_ReturnsInternalServerError()
     {
         var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
@@ -449,6 +494,35 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
             variables = new
             {
                 wishlistId = WISHLIST_TESTING_INVALID_WISHLIST_ID, 
+                dto = new
+                {
+                    text = MESSAGE_TEXT,
+                }
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AddMessageToPersonalWishlist_UnAuthorizedAccess_ReturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        const string MESSAGE_TEXT = "Second Message";
+
+        var mutation = new
+        {
+            query = "mutation addMessageToPersonalWishlist($wishlistId: String!, $dto: MessageCreateDtoInput!) { addMessageToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) { role, text, createdById } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_OTHER_USER_WISHLIST_ID, 
                 dto = new
                 {
                     text = MESSAGE_TEXT,
@@ -577,6 +651,78 @@ public class WishlistsTests : IClassFixture<TestingFactory<Program>>
                 wishlistId = WISHLIST_TESTING_OTHER_USER_WISHLIST_ID,
                 pageNumber = 1,
                 pageSize = 2
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AddProductToPersonalWishlist_InValidWishlistId_RturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "mutation addProductToPersonalWishlist($wishlistId: String!, $dto: ProductCreateDtoInput!) { addProductToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) { url, name, description, rating, imagesUrls, wasOpened } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_INVALID_WISHLIST_ID,
+                dto = new
+                {
+                    url = "https://www.amazon.com/url",
+                    name = "Generic name",
+                    description = "Generic description",
+                    rating = 4.8,
+                    imagesUrls = new string[]
+                    {
+                        "https://www.amazon.com/image-url-1",
+                        "https://www.amazon.com/image-url-2"
+                    },
+                    wasOpened = false
+                }
+            }
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(mutation);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        using var response = await _httpClient.PostAsync("graphql", content);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AddProductToPersonalWishlist_UnAuthorizedAccess_RturnsInternalServerError()
+    {
+        var tokensModel = await AccessExtention.Login(WISHLIST_TESTING_USER_EMAIL, WISHLIST_TESTING_USER_PASSWORD, _httpClient);
+        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        var user = await UserExtention.GetCurrentUser(_httpClient);
+
+        var mutation = new
+        {
+            query = "mutation addProductToPersonalWishlist($wishlistId: String!, $dto: ProductCreateDtoInput!) { addProductToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) { url, name, description, rating, imagesUrls, wasOpened } }",
+            variables = new
+            {
+                wishlistId = WISHLIST_TESTING_OTHER_USER_WISHLIST_ID,
+                dto = new
+                {
+                    url = "https://www.amazon.com/url",
+                    name = "Generic name",
+                    description = "Generic description",
+                    rating = 4.8,
+                    imagesUrls = new string[]
+                    {
+                        "https://www.amazon.com/image-url-1",
+                        "https://www.amazon.com/image-url-2"
+                    },
+                    wasOpened = false
+                }
             }
         };
 
