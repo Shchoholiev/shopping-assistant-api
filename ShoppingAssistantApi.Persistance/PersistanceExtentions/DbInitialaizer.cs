@@ -23,12 +23,12 @@ public class DbInitialaizer
 
     private readonly ITokensService _tokensService;
 
+    private readonly IWishlistsService _wishlistsService;
+
     private readonly IMongoCollection<User> _userCollection;
 
     private readonly IMongoCollection<Wishlist> _wishlistCollection;
-
-    private readonly IMongoCollection<Message> _messageCollection;
-
+    
     private readonly IMongoCollection<Product> _productCollection;
 
     public IEnumerable<RoleDto> Roles { get; set; }
@@ -39,17 +39,18 @@ public class DbInitialaizer
         _rolesService = serviceProvider.GetService<IRolesService>();
         _userManager = serviceProvider.GetService<IUserManager>();
         _tokensService = serviceProvider.GetService<ITokensService>();
-        _userCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<User>("Users");
+        _wishlistsService = serviceProvider.GetService<IWishlistsService>();
         _wishlistCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Wishlist>("Wishlists");
-        _messageCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Message>("Messages");
-        _productCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Product>("Products");
+        _userCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<User>("Users");
+        _productCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Product>("Product");
     }
 
     public async Task InitialaizeDb(CancellationToken cancellationToken)
     {
         await AddRoles(cancellationToken);
         await AddUsers(cancellationToken);
-        await AddWishlistsWithMessagesAndProducts(cancellationToken);
+        await AddWishlistsWithMessages(cancellationToken);
+        await AddProducts(cancellationToken);
     }
 
     public async Task AddUsers(CancellationToken cancellationToken)
@@ -173,129 +174,136 @@ public class DbInitialaizer
         var dto3 = await _rolesService.AddRoleAsync(role3, cancellationToken);
     }
 
-    public async Task AddWishlistsWithMessagesAndProducts(CancellationToken cancellationToken)
+    public async Task AddWishlistsWithMessages(CancellationToken cancellationToken)
     {
         var user1 = await (await _userCollection.FindAsync(x => x.Email.Equals("shopping.assistant.team@gmail.com"))).FirstAsync();
         var user2 = await (await _userCollection.FindAsync(x => x.Email.Equals("mykhailo.bilodid@nure.ua"))).FirstAsync();
-
-        var wishlistId1 = ObjectId.Parse("ab79cde6f69abcd3efab65cd");
-        var wishlistId2 = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab");
 
         var wishlists = new Wishlist[]
         {
             new Wishlist
             {
-                Id = wishlistId1,
+                Id = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
                 Name = "Gaming PC",
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user1.Id,
-                CreatedDateUtc = DateTime.UtcNow
+                Messages = new Message[]
+                {
+                    new Message
+                    {
+                        Text = "Prompt",
+                        Role = MessageRoles.User.ToString(),
+                        WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
+                        CreatedById = user1.Id,
+                        CreatedDateUtc = DateTime.UtcNow
+                    },
+                    new Message
+                    {
+                        Text = "Answer",
+                        Role = MessageRoles.Application.ToString(),
+                        WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
+                        CreatedById = user1.Id,
+                        CreatedDateUtc = DateTime.UtcNow
+                    },
+                }
             },
             new Wishlist
             {
-                Id = wishlistId2,
+                Id = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
                 Name = "Generic Wishlist Name",
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user2.Id,
-                CreatedDateUtc = DateTime.UtcNow
+                Messages = new Message[]
+                {
+                    new Message
+                    {
+                        Text = "Prompt",
+                        Role = MessageRoles.User.ToString(),
+                        WishlistId = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
+                        CreatedById = user1.Id,
+                        CreatedDateUtc = DateTime.UtcNow
+                    }
+                }
             }
         };
 
         await _wishlistCollection.InsertManyAsync(wishlists);
+    }
 
-        var messages = new Message[]
-        {
-            new Message
-            {
-                Text = "Message 1",
-                Role = MessageRoles.User.ToString(),
-                WishlistId = wishlistId1,
-                CreatedById = user1.Id,
-                CreatedDateUtc = DateTime.UtcNow
-            },
-            new Message
-            {
-                Text = "Message 2",
-                Role = MessageRoles.Application.ToString(),
-                WishlistId = wishlistId1,
-                CreatedDateUtc = DateTime.UtcNow.AddSeconds(5)
-            },
-            new Message
-            {
-                Text = "Message 3",
-                Role = MessageRoles.User.ToString(),
-                WishlistId = wishlistId1,
-                CreatedById = user1.Id,
-                CreatedDateUtc = DateTime.UtcNow.AddSeconds(20)
-            },
-            new Message
-            {
-                Text = "Message 4",
-                Role = MessageRoles.Application.ToString(),
-                WishlistId = wishlistId1,
-                CreatedDateUtc = DateTime.UtcNow.AddSeconds(25)
-            },
-            new Message
-            {
-                Text = "Message 5",
-                Role = MessageRoles.User.ToString(),
-                WishlistId = wishlistId1,
-                CreatedById = user1.Id,
-                CreatedDateUtc = DateTime.UtcNow.AddSeconds(45)
-            },
-            new Message
-            {
-                Text = "Message 6",
-                Role = MessageRoles.Application.ToString(),
-                WishlistId = wishlistId1,
-                CreatedDateUtc = DateTime.UtcNow.AddSeconds(50)
-            },
-            new Message
-            {
-                Text = "Prompt",
-                Role = MessageRoles.User.ToString(),
-                WishlistId = wishlistId2,
-                CreatedById = user2.Id,
-                CreatedDateUtc = DateTime.UtcNow
-            }
-        };
-
-        await _messageCollection.InsertManyAsync(messages);
-
+    public async Task AddProducts(CancellationToken cancellationToken)
+    {
         var products = new Product[]
         {
-            new Product
+            new Product()
             {
-                Name = "AMD Ryzen 5 5600G 6-Core 12-Thread Unlocked Desktop Processor with Radeon Graphics",
-                Description = "Features best-in-class graphics performance in a desktop processor for smooth 1080p gaming, no graphics card required",
-                Rating = 4.8,
-                Url = "https://a.co/d/5ceuIrq",
+                Name = "Thermaltake Glacier 360 Liquid-Cooled PC",
+                Description = "Cool PC for any task!",
+                Rating = 4.3,
+                Url = "https://www.amazon.com/Thermaltake-Liquid-Cooled-ToughRAM-Computer-S3WT-B550-G36-LCS/dp" +
+                      "/B09FYNM2GW/ref=sr_1_1?crid=391KAS4JFJSFF&keywords=gaming%2Bpc&qid=1697132083&sprefix=gaming%2Bpc%2Caps%2C209&sr=8-1&th=1",
                 ImagesUrls = new string[]
                 {
-                    "https://m.media-amazon.com/images/I/51f2hkWjTlL._AC_SL1200_.jpg",
-                    "https://m.media-amazon.com/images/I/51iji7Gel-L._AC_SL1200_.jpg"
+                    "https://m.media-amazon.com/images/I/61cXu9yGldL._AC_SL1200_.jpg",
+                    "https://m.media-amazon.com/images/I/615gxSGp42L._AC_SL1200_.jpg"
                 },
+                CreatedDateUtc = DateTime.UtcNow,
                 WasOpened = false,
-                WishlistId = wishlistId1,
-                CreatedById = user1.Id,
-                CreatedDateUtc = DateTime.UtcNow
-            },
-            new Product
+                WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd")
+            }, 
+            
+            new Product()
             {
-                Name = "Samsung 970 EVO Plus SSD 2TB NVMe M.2 Internal Solid State Hard Drive, V-NAND Technology, Storage and Memory Expansion for Gaming, Graphics w/ Heat Control, Max Speed, MZ-V7S2T0B/AM ",
-                Description = "7 Year Limited Warranty: The 970 EVO Plus provides up to 1200 TBW (Terabytes Written) with 5-years of protection for exceptional endurance powered by the latest V-NAND technology and Samsung's reputation for quality ",
-                Rating = 4.8,
-                Url = "https://a.co/d/gxnuqs1",
+                Name = "Apple MagSafe Battery Pack",
+                Description = "Portable Charger with Fast Charging Capability, Power Bank Compatible with iPhone",
+                Rating = 4.3,
+                Url = "https://www.amazon.com/Apple-MJWY3AM-A-MagSafe-Battery/dp/" +
+                      "B099BWY7WT/ref=sr_1_1?keywords=apple+power+bank&qid=1697375350&sr=8-1",
                 ImagesUrls = new string[]
                 {
-                    "https://m.media-amazon.com/images/I/51Brl+iYtvL._AC_SL1001_.jpg",
-                    "https://m.media-amazon.com/images/I/51GOfLlVwoL._AC_SL1001_.jpg"
+                    "https://m.media-amazon.com/images/I/418SjFMB1wL._AC_SX679_.jpg",
+                    "https://m.media-amazon.com/images/I/51v4pgChtLL._AC_SX679_.jpg",
+                    "https://m.media-amazon.com/images/I/61mJ0z7uYQL._AC_SX679_.jpg"
                 },
+                CreatedDateUtc = DateTime.UtcNow,
                 WasOpened = false,
-                WishlistId = wishlistId1,
-                CreatedById = user1.Id,
-                CreatedDateUtc = DateTime.UtcNow
+                WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd")
             },
+            
+            new Product()
+            {
+                Name = "Logitech K400 Plus Wireless Touch With Easy Media Control and Built-in Touchpad",
+                Description = "Reliable membrane keyboard with touchpad!",
+                Rating = 4.5,
+                Url = "https://www.amazon.com/Logitech-Wireless-Keyboard-Touchpad-PC-connected/dp/B014EUQOGK/" +
+                      "ref=sr_1_11?crid=BU2PHZKHKD65&keywords=keyboard+wireless&qid=1697375559&sprefix=keyboard+wir%2Caps%2C195&sr=8-11",
+                ImagesUrls = new string[]
+                {
+                    "https://m.media-amazon.com/images/I/51yjnWJ5urL._AC_SX466_.jpg",
+                    "https://m.media-amazon.com/images/I/71al70zP7QL._AC_SX466_.jpg",
+                    "https://m.media-amazon.com/images/I/71+JXDDY01L._AC_SX466_.jpg"
+                },
+                CreatedDateUtc = DateTime.UtcNow,
+                WasOpened = false,
+                WishlistId = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab")
+            },
+            
+            new Product()
+            {
+                Name = "Logitech MX Anywhere 2S Wireless Mouse Use On Any Surface",
+                Description = "Cross computer control: Game changing capacity to navigate seamlessly on three computers," +
+                              " and copy paste text, images, and files from one to the other using Logitech Flow",
+                Rating = 4.6,
+                Url = "https://www.amazon.com/Logitech-Hyper-Fast-Scrolling-Rechargeable-Computers/dp/B08P2JFPQC/ref=sr_1_8?" +
+                      "crid=2BL6Z14W2TPP3&keywords=mouse%2Bwireless&qid=1697375784&sprefix=mousewireless%2Caps%2C197&sr=8-8&th=1",
+                ImagesUrls = new string[]
+                {
+                    "https://m.media-amazon.com/images/I/6170mJHIsYL._AC_SX466_.jpg",
+                    "https://m.media-amazon.com/images/I/71a5As76MDL._AC_SX466_.jpg"
+                },
+                CreatedDateUtc = DateTime.UtcNow,
+                WasOpened = false,
+                WishlistId = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab")
+            }
         };
 
         await _productCollection.InsertManyAsync(products);

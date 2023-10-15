@@ -5,6 +5,7 @@ namespace ShoppingAssistantApi.Domain.Entities;
 
 public class Product : EntityBase
 {
+
     public required string Url { get; set; }
 
     public required string Name { get; set; }
