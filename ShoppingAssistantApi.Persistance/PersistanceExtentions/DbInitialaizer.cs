@@ -222,40 +222,72 @@ public class DbInitialaizer
 
     public async Task AddProducts(CancellationToken cancellationToken)
     {
-        var wishList1 = await _wishlistCollection.FindAsync(w => w.Name == "Gaming PC");
-        var wishList2 = await _wishlistCollection.FindAsync(w => w.Name == "Generic Wishlist Name");
-
         var products = new Product[]
         {
             new Product()
             {
-                Id = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
-                Url = "url",
-                Name = "Thermaltake Glacier",
-                Description = "Something",
-                Rating = 4.1,
+                Name = "Thermaltake Glacier 360 Liquid-Cooled PC",
+                Description = "Cool PC for any task!",
+                Rating = 4.3,
+                Url = "https://www.amazon.com/Thermaltake-Liquid-Cooled-ToughRAM-Computer-S3WT-B550-G36-LCS/dp" +
+                      "/B09FYNM2GW/ref=sr_1_1?crid=391KAS4JFJSFF&keywords=gaming%2Bpc&qid=1697132083&sprefix=gaming%2Bpc%2Caps%2C209&sr=8-1&th=1",
                 ImagesUrls = new string[]
                 {
-                    "url1",
-                    "url2"
-                }
+                    "https://m.media-amazon.com/images/I/61cXu9yGldL._AC_SL1200_.jpg",
+                    "https://m.media-amazon.com/images/I/615gxSGp42L._AC_SL1200_.jpg"
+                },
+                CreatedDateUtc = DateTime.UtcNow
             }, 
             
             new Product()
             {
-                Id = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
-                Url = "url",
-                Name = "Mac",
-                Description = "very very cool laptop",
-                Rating = 4.9,
+                Name = "Apple MagSafe Battery Pack",
+                Description = "Portable Charger with Fast Charging Capability, Power Bank Compatible with iPhone",
+                Rating = 4.3,
+                Url = "https://www.amazon.com/Apple-MJWY3AM-A-MagSafe-Battery/dp/" +
+                      "B099BWY7WT/ref=sr_1_1?keywords=apple+power+bank&qid=1697375350&sr=8-1",
                 ImagesUrls = new string[]
                 {
-                    "url1",
-                    "url2"
-                }
-            }
+                    "https://m.media-amazon.com/images/I/418SjFMB1wL._AC_SX679_.jpg",
+                    "https://m.media-amazon.com/images/I/51v4pgChtLL._AC_SX679_.jpg",
+                    "https://m.media-amazon.com/images/I/61mJ0z7uYQL._AC_SX679_.jpg"
+                },
+                CreatedDateUtc = DateTime.UtcNow
+            },
             
+            new Product()
+            {
+                Name = "Logitech K400 Plus Wireless Touch With Easy Media Control and Built-in Touchpad",
+                Description = "Reliable membrane keyboard with touchpad!",
+                Rating = 4.5,
+                Url = "https://www.amazon.com/Logitech-Wireless-Keyboard-Touchpad-PC-connected/dp/B014EUQOGK/" +
+                      "ref=sr_1_11?crid=BU2PHZKHKD65&keywords=keyboard+wireless&qid=1697375559&sprefix=keyboard+wir%2Caps%2C195&sr=8-11",
+                ImagesUrls = new string[]
+                {
+                    "https://m.media-amazon.com/images/I/51yjnWJ5urL._AC_SX466_.jpg",
+                    "https://m.media-amazon.com/images/I/71al70zP7QL._AC_SX466_.jpg",
+                    "https://m.media-amazon.com/images/I/71+JXDDY01L._AC_SX466_.jpg"
+                },
+                CreatedDateUtc = DateTime.UtcNow
+            },
+            
+            new Product()
+            {
+                Name = "Logitech MX Anywhere 2S Wireless Mouse Use On Any Surface",
+                Description = "Cross computer control: Game changing capacity to navigate seamlessly on three computers," +
+                              " and copy paste text, images, and files from one to the other using Logitech Flow",
+                Rating = 4.6,
+                Url = "https://www.amazon.com/Logitech-Hyper-Fast-Scrolling-Rechargeable-Computers/dp/B08P2JFPQC/ref=sr_1_8?" +
+                      "crid=2BL6Z14W2TPP3&keywords=mouse%2Bwireless&qid=1697375784&sprefix=mousewireless%2Caps%2C197&sr=8-8&th=1",
+                ImagesUrls = new string[]
+                {
+                    "https://m.media-amazon.com/images/I/6170mJHIsYL._AC_SX466_.jpg",
+                    "https://m.media-amazon.com/images/I/71a5As76MDL._AC_SX466_.jpg"
+                },
+                CreatedDateUtc = DateTime.UtcNow
+            }
         };
-        
+
+        await _productCollection.InsertManyAsync(products);
     }
 }
