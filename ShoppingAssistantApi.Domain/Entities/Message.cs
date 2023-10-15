@@ -9,5 +9,5 @@ public class Message : EntityBase
 
     public required string Role { get; set; }
 
-    public ObjectId WishlistId { get; set; }
+    public required ObjectId WishlistId { get; set; }
 }

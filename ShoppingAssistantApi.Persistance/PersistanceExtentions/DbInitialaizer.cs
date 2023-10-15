@@ -29,6 +29,8 @@ public class DbInitialaizer
 
     private readonly IMongoCollection<Message> _messageCollection;
 
+    private readonly IMongoCollection<Product> _productCollection;
+
     public IEnumerable<RoleDto> Roles { get; set; }
 
     public DbInitialaizer(IServiceProvider serviceProvider)
@@ -40,13 +42,14 @@ public class DbInitialaizer
         _userCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<User>("Users");
         _wishlistCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Wishlist>("Wishlists");
         _messageCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Message>("Messages");
+        _productCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Product>("Products");
     }
 
     public async Task InitialaizeDb(CancellationToken cancellationToken)
     {
         await AddRoles(cancellationToken);
         await AddUsers(cancellationToken);
-        await AddWishlistsWithMessages(cancellationToken);
+        await AddWishlistsWithMessagesAndProducts(cancellationToken);
     }
 
     public async Task AddUsers(CancellationToken cancellationToken)
@@ -170,7 +173,7 @@ public class DbInitialaizer
         var dto3 = await _rolesService.AddRoleAsync(role3, cancellationToken);
     }
 
-    public async Task AddWishlistsWithMessages(CancellationToken cancellationToken)
+    public async Task AddWishlistsWithMessagesAndProducts(CancellationToken cancellationToken)
     {
         var user1 = await (await _userCollection.FindAsync(x => x.Email.Equals("shopping.assistant.team@gmail.com"))).FirstAsync();
         var user2 = await (await _userCollection.FindAsync(x => x.Email.Equals("mykhailo.bilodid@nure.ua"))).FirstAsync();
@@ -186,6 +189,7 @@ public class DbInitialaizer
                 Name = "Gaming PC",
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
             },
             new Wishlist
             {
@@ -193,6 +197,7 @@ public class DbInitialaizer
                 Name = "Generic Wishlist Name",
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user2.Id,
+                CreatedDateUtc = DateTime.UtcNow
             }
         };
 
@@ -206,12 +211,14 @@ public class DbInitialaizer
                 Role = MessageRoles.User.ToString(),
                 WishlistId = wishlistId1,
                 CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
             },
             new Message
             {
                 Text = "Message 2",
                 Role = MessageRoles.Application.ToString(),
                 WishlistId = wishlistId1,
+                CreatedDateUtc = DateTime.UtcNow
             },
             new Message
             {
@@ -219,12 +226,14 @@ public class DbInitialaizer
                 Role = MessageRoles.User.ToString(),
                 WishlistId = wishlistId1,
                 CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
             },
             new Message
             {
                 Text = "Message 4",
                 Role = MessageRoles.Application.ToString(),
                 WishlistId = wishlistId1,
+                CreatedDateUtc = DateTime.UtcNow
             },
             new Message
             {
@@ -232,12 +241,14 @@ public class DbInitialaizer
                 Role = MessageRoles.User.ToString(),
                 WishlistId = wishlistId1,
                 CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
             },
             new Message
             {
                 Text = "Message 6",
                 Role = MessageRoles.Application.ToString(),
                 WishlistId = wishlistId1,
+                CreatedDateUtc = DateTime.UtcNow
             },
             new Message
             {
@@ -245,9 +256,48 @@ public class DbInitialaizer
                 Role = MessageRoles.User.ToString(),
                 WishlistId = wishlistId2,
                 CreatedById = user2.Id,
+                CreatedDateUtc = DateTime.UtcNow
             }
         };
 
         await _messageCollection.InsertManyAsync(messages);
+
+        var products = new Product[]
+        {
+            new Product
+            {
+                Name = "AMD Ryzen 5 5600G 6-Core 12-Thread Unlocked Desktop Processor with Radeon Graphics",
+                Description = "Features best-in-class graphics performance in a desktop processor for smooth 1080p gaming, no graphics card required",
+                Rating = 4.8,
+                Url = "https://a.co/d/5ceuIrq",
+                ImagesUrls = new string[]
+                {
+                    "https://m.media-amazon.com/images/I/51f2hkWjTlL._AC_SL1200_.jpg",
+                    "https://m.media-amazon.com/images/I/51iji7Gel-L._AC_SL1200_.jpg"
+                },
+                WasOpened = false,
+                WishlistId = wishlistId1,
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
+            new Product
+            {
+                Name = "Samsung 970 EVO Plus SSD 2TB NVMe M.2 Internal Solid State Hard Drive, V-NAND Technology, Storage and Memory Expansion for Gaming, Graphics w/ Heat Control, Max Speed, MZ-V7S2T0B/AM ",
+                Description = "7 Year Limited Warranty: The 970 EVO Plus provides up to 1200 TBW (Terabytes Written) with 5-years of protection for exceptional endurance powered by the latest V-NAND technology and Samsung's reputation for quality ",
+                Rating = 4.8,
+                Url = "https://a.co/d/gxnuqs1",
+                ImagesUrls = new string[]
+                {
+                    "https://m.media-amazon.com/images/I/51Brl+iYtvL._AC_SL1001_.jpg",
+                    "https://m.media-amazon.com/images/I/51GOfLlVwoL._AC_SL1001_.jpg"
+                },
+                WasOpened = false,
+                WishlistId = wishlistId1,
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
+        };
+
+        await _productCollection.InsertManyAsync(products);
     }
 }

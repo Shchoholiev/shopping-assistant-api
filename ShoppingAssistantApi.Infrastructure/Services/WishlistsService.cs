@@ -18,12 +18,15 @@ public class WishlistsService : IWishlistsService
 
     private readonly IMessagesRepository _messagesRepository;
 
+    private readonly IProductsRepository _productRepository;
+
     private readonly IMapper _mapper;
 
-    public WishlistsService(IWishlistsRepository wishlistRepository, IMessagesRepository messageRepository, IMapper mapper)
+    public WishlistsService(IWishlistsRepository wishlistRepository, IMessagesRepository messageRepository, IProductsRepository productRepository, IMapper mapper)
     {
         _wishlistsRepository = wishlistRepository;
         _messagesRepository = messageRepository;
+        _productRepository = productRepository;
         _mapper = mapper;
     }
 
@@ -111,6 +114,27 @@ public class WishlistsService : IWishlistsService
         var dtos = _mapper.Map<List<MessageDto>>(entities);
         var count = await _messagesRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId, cancellationToken);
         return new PagedList<MessageDto>(dtos, pageNumber, pageSize, count);
+    }
+
+    public async Task<PagedList<ProductDto>> GetProductsPageFromPersonalWishlistAsync(string wishlistId, int pageNumber, int pageSize, CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+
+        var entities = await _productRepository.GetPageAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId, cancellationToken);
+
+        foreach (var e in entities)
+        {
+            Console.WriteLine(e.Name);
+        }
+
+        var dtos = _mapper.Map<List<ProductDto>>(entities);
+        var count = await _productRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId, cancellationToken);
+        return new PagedList<ProductDto>(dtos, pageNumber, pageSize, count);
     }
 
     public async Task<WishlistDto> DeletePersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken)

@@ -8,5 +8,5 @@ public class MessageDto
 
     public required string Role { get; set; }
 
-    public string? CreatedById { get; set; } = null;
+    public required string CreatedById { get; set; }
 }
