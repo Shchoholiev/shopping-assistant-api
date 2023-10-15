@@ -33,6 +33,7 @@ public class MessagesRepository : BaseRepository<Message>, IMessagesRepository
         }
 
         return await _collection.Find(predicate)
+                                .SortBy(x => x.CreatedDateUtc)
                                 .Skip((numberOfPages - pageNumber) * pageSize)
                                 .Limit(pageSize)
                                 .ToListAsync(cancellationToken);

@@ -218,7 +218,7 @@ public class DbInitialaizer
                 Text = "Message 2",
                 Role = MessageRoles.Application.ToString(),
                 WishlistId = wishlistId1,
-                CreatedDateUtc = DateTime.UtcNow
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(5)
             },
             new Message
             {
@@ -226,14 +226,14 @@ public class DbInitialaizer
                 Role = MessageRoles.User.ToString(),
                 WishlistId = wishlistId1,
                 CreatedById = user1.Id,
-                CreatedDateUtc = DateTime.UtcNow
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(20)
             },
             new Message
             {
                 Text = "Message 4",
                 Role = MessageRoles.Application.ToString(),
                 WishlistId = wishlistId1,
-                CreatedDateUtc = DateTime.UtcNow
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(25)
             },
             new Message
             {
@@ -241,14 +241,14 @@ public class DbInitialaizer
                 Role = MessageRoles.User.ToString(),
                 WishlistId = wishlistId1,
                 CreatedById = user1.Id,
-                CreatedDateUtc = DateTime.UtcNow
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(45)
             },
             new Message
             {
                 Text = "Message 6",
                 Role = MessageRoles.Application.ToString(),
                 WishlistId = wishlistId1,
-                CreatedDateUtc = DateTime.UtcNow
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(50)
             },
             new Message
             {
