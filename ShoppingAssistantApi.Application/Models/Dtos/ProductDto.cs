@@ -1,10 +1,8 @@
-using MongoDB.Bson;
-using ShoppingAssistantApi.Domain.Common;
+namespace ShoppingAssistantApi.Application.Models.Dtos;
 
-namespace ShoppingAssistantApi.Domain.Entities;
-
-public class Product : EntityBase
+public class ProductDto
 {
+    public required string Id { get; set; }
 
     public required string Url { get; set; }
 
@@ -18,5 +16,5 @@ public class Product : EntityBase
 
     public required bool WasOpened { get; set; }
 
-    public required ObjectId WishlistId { get; set; }
+    public required string WishlistId { get; set; }
 }

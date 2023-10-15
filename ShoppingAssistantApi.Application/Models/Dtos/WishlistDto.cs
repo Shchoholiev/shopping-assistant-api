@@ -8,5 +8,5 @@ public class WishlistDto
 
     public required string Type { get; set; }
 
-    public string CreatedById { get; set; } = null!;
+    public required string CreatedById { get; set; }
 }
