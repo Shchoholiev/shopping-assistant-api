@@ -18,12 +18,15 @@ public class WishlistsService : IWishlistsService
 
     private readonly IMessagesRepository _messagesRepository;
 
+    private readonly IProductsRepository _productsRepository;
+
     private readonly IMapper _mapper;
 
-    public WishlistsService(IWishlistsRepository wishlistRepository, IMessagesRepository messageRepository, IMapper mapper)
+    public WishlistsService(IWishlistsRepository wishlistRepository, IMessagesRepository messageRepository, IProductsRepository productRepository, IMapper mapper)
     {
         _wishlistsRepository = wishlistRepository;
         _messagesRepository = messageRepository;
+        _productsRepository = productRepository;
         _mapper = mapper;
     }
 
@@ -47,6 +50,8 @@ public class WishlistsService : IWishlistsService
         {
             Text = dto.FirstMessageText,
             Role = MessageRoles.User.ToString(),
+            CreatedById = (ObjectId) GlobalUser.Id,
+            CreatedDateUtc = DateTime.UtcNow,
             WishlistId = createdWishlist.Id
         };
         var createdMessage = await _messagesRepository.AddAsync(newMessage, cancellationToken);
@@ -62,17 +67,13 @@ public class WishlistsService : IWishlistsService
         {
             throw new InvalidDataException("Provided id is invalid.");
         }
-        newMessage.WishlistId = wishlistObjectId;
+
         newMessage.Role = MessageRoles.User.ToString();
         newMessage.CreatedById = (ObjectId) GlobalUser.Id;
         newMessage.CreatedDateUtc = DateTime.UtcNow;
+        newMessage.WishlistId = wishlistObjectId;
 
-        var relatedWishlist = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistObjectId && x.CreatedById == GlobalUser.Id, cancellationToken);
-
-        if (relatedWishlist == null)
-        {
-            throw new UnAuthorizedException<Wishlist>();
-        }
+        await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
 
         var createdMessage = await _messagesRepository.AddAsync(newMessage, cancellationToken);
 
@@ -81,7 +82,7 @@ public class WishlistsService : IWishlistsService
 
     public async Task<PagedList<WishlistDto>> GetPersonalWishlistsPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken)
     {
-        var entities = await _wishlistsRepository.GetPageAsync(pageNumber, pageSize, cancellationToken);
+        var entities = await _wishlistsRepository.GetPageAsync(pageNumber, pageSize, x => x.CreatedById == GlobalUser.Id, cancellationToken);
         var dtos = _mapper.Map<List<WishlistDto>>(entities);
         var count = await _wishlistsRepository.GetTotalCountAsync();
         return new PagedList<WishlistDto>(dtos, pageNumber, pageSize, count);
@@ -93,15 +94,95 @@ public class WishlistsService : IWishlistsService
         {
             throw new InvalidDataException("Provided id is invalid.");
         }
-        var entity = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistObjectId && x.CreatedById == GlobalUser.Id, cancellationToken);
 
-        Console.WriteLine("     WISHLIST: " + entity.CreatedById + " " + GlobalUser.Id);
+        var entity = await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+        
+        return _mapper.Map<WishlistDto>(entity);
+    }
 
-        if (entity == null)
+    public async Task<PagedList<MessageDto>> GetMessagesPageFromPersonalWishlistAsync(string wishlistId, int pageNumber, int pageSize, CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+
+        var entities = await _messagesRepository.GetPageStartingFromEndAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId, cancellationToken);
+
+        var dtos = _mapper.Map<List<MessageDto>>(entities);
+        var count = await _messagesRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId, cancellationToken);
+        return new PagedList<MessageDto>(dtos, pageNumber, pageSize, count);
+    }
+
+    public async Task<ProductDto> AddProductToPersonalWishlistAsync(string wishlistId, ProductCreateDto dto, CancellationToken cancellationToken)
+    {
+        var newProduct = _mapper.Map<Product>(dto);
+
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+        
+        newProduct.CreatedById = (ObjectId) GlobalUser.Id;
+        newProduct.CreatedDateUtc = DateTime.UtcNow;
+        newProduct.WishlistId = wishlistObjectId;
+
+        var createdProduct = await _productsRepository.AddAsync(newProduct, cancellationToken);
+
+        return _mapper.Map<ProductDto>(createdProduct);
+    }
+
+    public async Task<PagedList<ProductDto>> GetProductsPageFromPersonalWishlistAsync(string wishlistId, int pageNumber, int pageSize, CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+
+        var entities = await _productsRepository.GetPageAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId, cancellationToken);
+
+        var dtos = _mapper.Map<List<ProductDto>>(entities);
+        var count = await _productsRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId, cancellationToken);
+        return new PagedList<ProductDto>(dtos, pageNumber, pageSize, count);
+    }
+
+    public async Task<WishlistDto> DeletePersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        var entity = await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+
+        entity.LastModifiedById = GlobalUser.Id;
+        entity.LastModifiedDateUtc = DateTime.UtcNow;
+
+        await _wishlistsRepository.DeleteAsync(entity, cancellationToken);
+
+        return _mapper.Map<WishlistDto>(entity);
+    }
+
+    private async Task<Wishlist> TryGetPersonalWishlist(ObjectId wishlistId, CancellationToken cancellationToken)
+    {
+        var entity = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistId, cancellationToken);
+
+        if (entity.CreatedById != GlobalUser.Id)
         {
             throw new UnAuthorizedException<Wishlist>();
         }
-        
-        return _mapper.Map<WishlistDto>(entity);
+
+        if (entity == null)
+        {
+            throw new EntityNotFoundException<Wishlist>();
+        }
+
+        return entity;
     }
 }

@@ -20,7 +20,9 @@
 				"kreativ-software.csharpextensions",
 				"ms-dotnettools.csharp",
 				"patcx.vscode-nuget-gallery",
-				"mhutchie.git-graph"
+				"mhutchie.git-graph",
+				"fernandoescolar.vscode-solution-explorer",
+				"formulahendry.dotnet-test-explorer"
 			]
 		}
 	}
