@@ -16,4 +16,6 @@ public class MongoDbContext
     }
 
     public IMongoDatabase Db => this._db;
+
+    public MongoClient Client => this._client;
 }
