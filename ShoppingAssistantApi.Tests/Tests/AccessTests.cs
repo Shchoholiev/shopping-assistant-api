@@ -1,4 +1,4 @@
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using ShoppingAssistantApi.Application.Models.Identity;
 using ShoppingAssistantApi.Tests.TestExtentions;
 using Xunit;

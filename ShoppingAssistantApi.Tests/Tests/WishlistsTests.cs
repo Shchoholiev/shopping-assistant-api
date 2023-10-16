@@ -107,7 +107,7 @@ public class WishlistsTests : TestsBase
     }
 
     [Fact]
-    public async Task AddMessageToPersonalWishlist_ValidMessageModel_ReturnsNewMessageModel()
+    public async Task AddMessageToPersonalWishlist_ValidMessage_ReturnsNewMessage()
     {
         await LoginAsync(TestingUserEmail, TestingUserPassword);
         const string MessageText = "Second Message";
@@ -136,6 +136,41 @@ public class WishlistsTests : TestsBase
         Assert.Equal(MessageRoles.User.ToString(), message.Role);
         Assert.Equal(MessageText, message.Text);
         Assert.Equal(TestingUserId, message.CreatedById);
+    }
+
+    [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_ValidPageNumberAndSize_ReturnsPage()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) { 
+                    messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) { 
+                        hasNextPage, 
+                        hasPreviousPage, 
+                        items { id, text, role, createdById }, 
+                        pageNumber, 
+                        pageSize, 
+                        totalItems, 
+                        totalPages 
+                    } 
+                }",
+            variables = new
+            {
+                wishlistId = "ab79cde6f69abcd3efab95cd", // From DbInitializer 
+                pageNumber = 1,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<MessageDto>?) jsonObject?.data?.messagesPageFromPersonalWishlist?.ToObject<PagedList<MessageDto>>();
+        
+        Assert.NotNull(pagedList);
+        Assert.NotEmpty(pagedList.Items);
+        Assert.Equal("Third Message", pagedList.Items.FirstOrDefault()?.Text);
+        Assert.Equal(MessageRoles.User.ToString(), pagedList.Items.FirstOrDefault()?.Role);
     }
 
     [Fact]

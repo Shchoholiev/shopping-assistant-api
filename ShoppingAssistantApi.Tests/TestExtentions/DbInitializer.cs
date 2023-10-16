@@ -97,28 +97,34 @@ public class DbInitializer
     public async Task InitializeWishlistsAsync()
     {
         var wishlistsCollection = _dbContext.Db.GetCollection<Wishlist>("Wishlists");
+        var messagesCollection = _dbContext.Db.GetCollection<Message>("Messages");
 
         var gamingPcWishlist = new Wishlist
         {
             Id = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
             Name = "Gaming PC",
             Type = WishlistTypes.Product.ToString(),
-            CreatedById = ObjectId.Parse("652c3b89ae02a3135d6418fc"),
-            Messages = new Message[]
-            {
-                new Message
-                {
-                    Text = "Prompt",
-                    Role = MessageRoles.User.ToString(),
-                },
-                new Message
-                {
-                    Text = "Answer",
-                    Role = MessageRoles.Application.ToString(),
-                },
-            }
+            CreatedById = ObjectId.Parse("652c3b89ae02a3135d6418fc")
         };
         await wishlistsCollection.InsertOneAsync(gamingPcWishlist);
+
+        await messagesCollection.InsertManyAsync(new Message[]
+        {
+            new() {
+                WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
+                Text = "Prompt",
+                Role = MessageRoles.User.ToString(),
+                CreatedDateUtc = DateTime.UtcNow.AddMinutes(-1),
+                CreatedById = ObjectId.Parse("652c3b89ae02a3135d6418fc")
+            },
+            new() {
+                WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
+                Text = "Answer",
+                Role = MessageRoles.Application.ToString(),
+                CreatedDateUtc = DateTime.UtcNow,
+                CreatedById = ObjectId.Parse("652c3b89ae02a3135d6418fc")
+            },
+        });
 
         var genericWishlist = new Wishlist
         {
@@ -130,11 +136,55 @@ public class DbInitializer
             {
                 new Message
                 {
-                    Text = "Prompt",
+                    Text = "One Message",
                     Role = MessageRoles.User.ToString(),
+                    CreatedDateUtc = DateTime.UtcNow.AddMinutes(-1),
+                    CreatedById = ObjectId.Parse("652c3b89ae02a3135d6409fc")
                 }
             }
         };
         await wishlistsCollection.InsertOneAsync(genericWishlist);
+        await messagesCollection.InsertOneAsync(new Message
+        {
+            WishlistId = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
+            Text = "One Message",
+            Role = MessageRoles.User.ToString(),
+            CreatedDateUtc = DateTime.UtcNow.AddMinutes(-1),
+            CreatedById = ObjectId.Parse("652c3b89ae02a3135d6409fc")
+        });
+        
+        var mouseWishlist = new Wishlist
+        {
+            Id = ObjectId.Parse("ab79cde6f69abcd3efab95cd"),
+            Name = "Mouse",
+            Type = WishlistTypes.Product.ToString(),
+            CreatedById = ObjectId.Parse("652c3b89ae02a3135d6418fc"),
+        };
+        await wishlistsCollection.InsertOneAsync(mouseWishlist);
+
+        await messagesCollection.InsertManyAsync(new List<Message>
+        {
+            new() {
+                WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab95cd"),
+                Text = "First Message",
+                Role = MessageRoles.User.ToString(),
+                CreatedDateUtc = DateTime.UtcNow.AddMinutes(-2),
+                CreatedById = ObjectId.Parse("652c3b89ae02a3135d6418fc"),
+            },
+            new() {
+                WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab95cd"),
+                Text = "Second Message",
+                Role = MessageRoles.Application.ToString(),
+                CreatedDateUtc = DateTime.UtcNow.AddMinutes(-1),
+                CreatedById = ObjectId.Parse("652c3b89ae02a3135d6418fc"),
+            },
+            new() {
+                WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab95cd"),
+                Text = "Third Message",
+                Role = MessageRoles.User.ToString(),
+                CreatedDateUtc = DateTime.UtcNow,
+                CreatedById = ObjectId.Parse("652c3b89ae02a3135d6418fc"),
+            },
+        });
     }
 }
