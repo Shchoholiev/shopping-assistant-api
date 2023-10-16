@@ -5,9 +5,9 @@ namespace ShoppingAssistantApi.Domain.Entities;
 
 public class Message : EntityBase
 {
-    public required string Text { get; set; }
+    public string Text { get; set; }
 
-    public required string Role { get; set; }
+    public string Role { get; set; }
 
-    public required ObjectId WishlistId { get; set; }
+    public ObjectId WishlistId { get; set; }
 }

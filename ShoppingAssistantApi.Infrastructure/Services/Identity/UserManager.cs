@@ -1,7 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.Win32;
 using MongoDB.Bson;
 using ShoppingAssistantApi.Application.Exceptions;
 using ShoppingAssistantApi.Application.GlobalInstances;
@@ -14,23 +13,32 @@ using ShoppingAssistantApi.Domain.Entities;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 
-
 namespace ShoppingAssistantApi.Infrastructure.Services.Identity;
-public class UserManager : IUserManager
+
+public class UserManager : ServiceBase, IUserManager
 {
     private readonly IUsersRepository _usersRepository;
-
-    private readonly ILogger _logger;
 
     private readonly IPasswordHasher _passwordHasher;
 
     private readonly ITokensService _tokensService;
 
+    private readonly IRolesRepository _rolesRepository;
+    
+    private readonly IRefreshTokensRepository _refreshTokensRepository;
+
     private readonly IMapper _mapper;
 
-    private readonly IRolesRepository _rolesRepository;
+    private readonly ILogger _logger;
 
-    public UserManager(IUsersRepository usersRepository, ILogger<UserManager> logger, IPasswordHasher passwordHasher, ITokensService tokensService, IMapper mapper, IRolesRepository rolesRepository)
+    public UserManager(
+        IUsersRepository usersRepository, 
+        IPasswordHasher passwordHasher, 
+        ITokensService tokensService, 
+        IRolesRepository rolesRepository,
+        IRefreshTokensRepository refreshTokensRepository,
+        IMapper mapper, 
+        ILogger<UserManager> logger)
     {
         this._usersRepository = usersRepository;
         this._logger = logger;
@@ -38,15 +46,16 @@ public class UserManager : IUserManager
         this._tokensService = tokensService;
         this._mapper = mapper;
         this._rolesRepository = rolesRepository;
-
+        this._refreshTokensRepository = refreshTokensRepository;
     }
 
     public async Task<TokensModel> LoginAsync(AccessUserModel login, CancellationToken cancellationToken)
     {
-        var user = login.Email != null
-            ? await this._usersRepository.GetUserAsync(x => x.Email == login.Email, cancellationToken)
-            : await this._usersRepository.GetUserAsync(x => x.Phone == login.Phone, cancellationToken);
+        _logger.LogInformation($"Logging in user with email: {login.Email} and phone: {login.Phone}.");
 
+        var user = string.IsNullOrEmpty(login.Phone)
+            ? await this._usersRepository.GetUserAsync(u => u.Email == login.Email, cancellationToken)
+            : await this._usersRepository.GetUserAsync(u => u.Phone == login.Phone, cancellationToken);
         if (user == null)
         {
             throw new EntityNotFoundException<User>();
@@ -57,197 +66,216 @@ public class UserManager : IUserManager
             throw new InvalidDataException("Invalid password!");
         }
 
-        user.RefreshToken = this.GetRefreshToken();
-        user.RefreshTokenExpiryDate = DateTime.UtcNow.AddDays(30);
-        await this._usersRepository.UpdateUserAsync(user, cancellationToken);
-        var tokens = this.GetUserTokens(user);
+        var refreshToken = await AddRefreshToken(user.Id, cancellationToken);
 
-        this._logger.LogInformation($"Logged in user with email: {login.Email}.");
+        var tokens = this.GetUserTokens(user, refreshToken);
+
+        this._logger.LogInformation($"Logged in user with email: {login.Email} and phone: {login.Phone}.");
 
         return tokens;
     }
 
     public async Task<TokensModel> AccessGuestAsync(AccessGuestModel guest, CancellationToken cancellationToken)
     {
+        _logger.LogInformation($"Logging in / Registering guest with guest id: {guest.GuestId}.");
+
         var user = await this._usersRepository.GetUserAsync(x => x.GuestId == guest.GuestId, cancellationToken);
 
-        if (user != null)
+        if (user == null)
         {
-            user.RefreshToken = this.GetRefreshToken();
-            await this._usersRepository.UpdateUserAsync(user, cancellationToken);
-            var userTokens = this.GetUserTokens(user);
+            var role = await this._rolesRepository.GetRoleAsync(r => r.Name == "Guest", cancellationToken);
+            user = new User
+            {
+                GuestId = guest.GuestId,
+                Roles = new List<Role> { role },
+                CreatedDateUtc = DateTime.UtcNow,
+                CreatedById = ObjectId.Empty // Default value for all new users
+            };
 
-            this._logger.LogInformation($"Logged in guest with guest id: {guest.GuestId}.");
+            await this._usersRepository.AddAsync(user, cancellationToken);
 
-            return userTokens;
+            this._logger.LogInformation($"Created guest with guest id: {guest.GuestId}.");
         }
 
-        var role = await this._rolesRepository.GetRoleAsync(r => r.Name == "Guest", cancellationToken);
+        var refreshToken = await AddRefreshToken(user.Id, cancellationToken);
+        var tokens = this.GetUserTokens(user, refreshToken);
 
-        var newUser = new User
-        {
-            GuestId = guest.GuestId,
-            Roles = new List<Role> { role },
-            RefreshToken = this.GetRefreshToken(),
-            RefreshTokenExpiryDate = DateTime.Now.AddDays(30),
-            CreatedDateUtc = DateTime.UtcNow,
-            LastModifiedDateUtc = DateTime.UtcNow
-        };
-
-        await this._usersRepository.AddAsync(newUser, cancellationToken);
-        var tokens = this.GetUserTokens(newUser);
-
-        this._logger.LogInformation($"Created guest with guest id: {guest.GuestId}.");
+        this._logger.LogInformation($"Logged in guest with guest id: {guest.GuestId}.");
 
         return tokens;
     }
 
-    public async Task<TokensModel> AddToRoleAsync(string roleName, string id, CancellationToken cancellationToken)
+    public async Task<TokensModel> RefreshAccessTokenAsync(TokensModel tokensModel, CancellationToken cancellationToken)
     {
+        _logger.LogInformation($"Refreshing access token.");
+
+        var principal = _tokensService.GetPrincipalFromExpiredToken(tokensModel.AccessToken);
+        var userId = ParseObjectId(principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value);
+
+        var refreshTokenModel = await this._refreshTokensRepository
+            .GetOneAsync(r => 
+                r.Token == tokensModel.RefreshToken 
+                && r.CreatedById == userId
+                && r.IsDeleted == false, cancellationToken);
+        if (refreshTokenModel == null || refreshTokenModel.ExpiryDateUTC < DateTime.UtcNow)
+        {
+            throw new SecurityTokenExpiredException();
+        }
+
+        var refreshToken = refreshTokenModel.Token;
+
+        // Update Refresh token if it expires in less than 7 days to keep user constantly logged in if he uses the app
+        if (refreshTokenModel.ExpiryDateUTC.AddDays(-7) < DateTime.UtcNow)
+        {
+            await _refreshTokensRepository.DeleteAsync(refreshTokenModel, cancellationToken);
+            
+            var newRefreshToken = await AddRefreshToken(userId, cancellationToken);
+            refreshToken = newRefreshToken.Token;
+        }
+
+        var tokens = new TokensModel
+        {
+            AccessToken = _tokensService.GenerateAccessToken(principal.Claims),
+            RefreshToken = refreshToken
+        };
+
+        this._logger.LogInformation($"Refreshed access token.");
+
+        return tokens;
+    }
+
+    public async Task<UserDto> AddToRoleAsync(string roleName, string userId, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation($"Adding Role: {roleName} to User with Id: {userId}.");
+
         var role = await this._rolesRepository.GetRoleAsync(r => r.Name == roleName, cancellationToken);
         if (role == null)
         {
             throw new EntityNotFoundException<Role>();
         }
 
-        if (!ObjectId.TryParse(id, out var objectId))
-        {
-            throw new InvalidDataException("Provided id is invalid.");
-        }
-
-        var user = await this._usersRepository.GetUserAsync(objectId, cancellationToken);
+        var userObjectId = ParseObjectId(userId);
+        var user = await this._usersRepository.GetUserAsync(userObjectId, cancellationToken);
         if (user == null)
         {
             throw new EntityNotFoundException<User>();
         }
 
         user.Roles.Add(role);
-        await this._usersRepository.UpdateUserAsync(user, cancellationToken);
-        var tokens = this.GetUserTokens(user);
+        var updatedUser = await this._usersRepository.UpdateUserAsync(user, cancellationToken);
+        var userDto = this._mapper.Map<UserDto>(updatedUser);
 
-        this._logger.LogInformation($"Added role {roleName} to user with id: {id}.");
+        this._logger.LogInformation($"Added Role: {roleName} to User with Id: {userId}.");
 
-        return tokens;
+        return userDto;
     }
 
-    public async Task<TokensModel> RemoveFromRoleAsync(string roleName, string id, CancellationToken cancellationToken)
+    public async Task<UserDto> RemoveFromRoleAsync(string roleName, string userId, CancellationToken cancellationToken)
     {
+        _logger.LogInformation($"Removing Role: {roleName} from User with Id: {userId}.");
+
         var role = await this._rolesRepository.GetRoleAsync(r => r.Name == roleName, cancellationToken);
         if (role == null)
         {
             throw new EntityNotFoundException<Role>();
         }
 
-        if (!ObjectId.TryParse(id, out var objectId))
-        {
-            throw new InvalidDataException("Provided id is invalid.");
-        }
-
-        var user = await this._usersRepository.GetUserAsync(objectId, cancellationToken);
+        var userObjectId = ParseObjectId(userId);
+        var user = await this._usersRepository.GetUserAsync(userObjectId, cancellationToken);
         if (user == null)
         {
             throw new EntityNotFoundException<User>();
         }
 
         var deletedRole = user.Roles.Find(x => x.Name == role.Name);
-
         user.Roles.Remove(deletedRole);
-        await this._usersRepository.UpdateUserAsync(user, cancellationToken);
-        var tokens = this.GetUserTokens(user);
 
-        this._logger.LogInformation($"Added role {roleName} to user with id: {id}.");
+        var updatedUser = await this._usersRepository.UpdateUserAsync(user, cancellationToken);
+        var userDto = this._mapper.Map<UserDto>(updatedUser);
 
-        return tokens;
+        this._logger.LogInformation($"Removed Role: {roleName} from User with Id: {userId}.");
+
+        return userDto;
     }
 
     public async Task<UpdateUserModel> UpdateAsync(UserDto userDto, CancellationToken cancellationToken)
     {
-        if (userDto.Email != null) ValidateEmail(userDto.Email);
-        if (userDto.Phone != null) ValidateNumber(userDto.Phone);
-
-        if (userDto.Roles.Any(x => x.Name == "Guest") && !userDto.Roles.Any(x => x.Name == "User"))
-        {
-            if (userDto.Password != null && (userDto.Email != null || userDto.Phone != null))
-            {
-                var roleEntity = await this._rolesRepository.GetRoleAsync(x => x.Name == "User", cancellationToken);
-                var roleDto = this._mapper.Map<RoleDto>(roleEntity);
-                userDto.Roles.Add(roleDto);
-            }
-        }
+        _logger.LogInformation($"Updating user with id: {GlobalUser.Id}.");
 
         var user = await this._usersRepository.GetUserAsync(x => x.Id == GlobalUser.Id, cancellationToken);
-
         if (user == null)
         {
             throw new EntityNotFoundException<User>();
         }
 
-        if (userDto.Roles.Any(x => x.Name == "User") && userDto.Email != null)
-        {
-            if (await this._usersRepository.GetUserAsync(x => x.Email == userDto.Email, cancellationToken) != null)
-            {
-                throw new EntityAlreadyExistsException<User>("email", userDto.Email);
-            }
-        }
-        if (userDto.Roles.Any(x => x.Name == "User") && userDto.Phone != null)
-        {
-            if (await this._usersRepository.GetUserAsync(x => x.Phone == userDto.Phone, cancellationToken) != null)
-            {
-                throw new EntityAlreadyExistsException<User>("phone", userDto.Phone);
-            }
-        }
+        await ValidateUserAsync(userDto, user, cancellationToken);   
 
         this._mapper.Map(userDto, user);
-        if (!userDto.Password.IsNullOrEmpty())
+        if (!string.IsNullOrEmpty(userDto.Password))
         {
             user.PasswordHash = this._passwordHasher.Hash(userDto.Password);
         }
-        user.RefreshToken = this.GetRefreshToken();
-        await this._usersRepository.UpdateUserAsync(user, cancellationToken);
+        await CheckAndUpgradeToUserAsync(user, cancellationToken);
 
-        var tokens = this.GetUserTokens(user);
+        var updatedUser = await this._usersRepository.UpdateUserAsync(user, cancellationToken);
 
-        this._logger.LogInformation($"Update user with id: {GlobalUser.Id.ToString()}.");
+        var refreshToken = await AddRefreshToken(user.Id, cancellationToken);
+        var tokens = this.GetUserTokens(user, refreshToken);
 
-        return new UpdateUserModel() { Tokens = tokens, User = this._mapper.Map<UserDto>(user) };
+        var updatedUserDto = this._mapper.Map<UserDto>(updatedUser);
+
+        this._logger.LogInformation($"Update user with id: {GlobalUser.Id}.");
+
+        return new UpdateUserModel() 
+        { 
+            Tokens = tokens, 
+            User = updatedUserDto
+        };
     }
 
-    public async Task<UpdateUserModel> UpdateUserByAdminAsync(string id, UserDto userDto, CancellationToken cancellationToken)
+    public async Task<UserDto> UpdateUserByAdminAsync(string id, UserDto userDto, CancellationToken cancellationToken)
     {
-        if (!ObjectId.TryParse(id, out var objectId))
-        {
-            throw new InvalidDataException("Provided id is invalid.");
-        }
+        _logger.LogInformation($"Admin updating User with Id: {id}.");
 
-        var user = await this._usersRepository.GetUserAsync(objectId, cancellationToken);
-
+        var userObjectId = ParseObjectId(id);
+        var user = await this._usersRepository.GetUserAsync(userObjectId, cancellationToken);
         if (user == null)
         {
             throw new EntityNotFoundException<User>();
         }
 
+        await ValidateUserAsync(userDto, user, cancellationToken);   
+
         this._mapper.Map(userDto, user);
+        var updatedUser = await this._usersRepository.UpdateUserAsync(user, cancellationToken);
 
-        user.RefreshToken = this.GetRefreshToken();
-        await this._usersRepository.UpdateUserAsync(user, cancellationToken);
+        var updatedUserDto = this._mapper.Map<UserDto>(updatedUser);
+        
+        this._logger.LogInformation($"Admin updated User with Id: {id}.");
 
-        var tokens = this.GetUserTokens(user);
-
-        this._logger.LogInformation($"Update user with id: {id}.");
-
-        return new UpdateUserModel() { Tokens = tokens, User = this._mapper.Map<UserDto>(user) };
+        return updatedUserDto;
     }
 
-    private string GetRefreshToken()
+    private async Task<RefreshToken> AddRefreshToken(ObjectId userId, CancellationToken cancellationToken)
     {
-        var refreshToken = this._tokensService.GenerateRefreshToken();
+        _logger.LogInformation($"Adding new refresh token for user with Id : {userId}.");
 
-        this._logger.LogInformation($"Returned new refresh token.");
+        var refreshToken = new RefreshToken
+        {
+            Token = _tokensService.GenerateRefreshToken(),
+            ExpiryDateUTC = DateTime.UtcNow.AddDays(30),
+            CreatedById = userId,
+            CreatedDateUtc = DateTime.UtcNow
+        };
+
+        await this._refreshTokensRepository.AddAsync(refreshToken, cancellationToken);
+
+        this._logger.LogInformation($"Added new refresh token.");
 
         return refreshToken;
     }
 
-    private TokensModel GetUserTokens(User user)
+    private TokensModel GetUserTokens(User user, RefreshToken refreshToken)
     {
         var claims = this.GetClaims(user);
         var accessToken = this._tokensService.GenerateAccessToken(claims);
@@ -257,7 +285,7 @@ public class UserManager : IUserManager
         return new TokensModel
         {
             AccessToken = accessToken,
-            RefreshToken = user.RefreshToken,
+            RefreshToken = refreshToken.Token,
         };
     }
 
@@ -265,19 +293,54 @@ public class UserManager : IUserManager
     {
         var claims = new List<Claim>()
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email ?? string.Empty),
-                new Claim(ClaimTypes.MobilePhone, user.Phone ?? string.Empty),
+                new (ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new (ClaimTypes.Email, user.Email ?? string.Empty),
+                new (ClaimTypes.MobilePhone, user.Phone ?? string.Empty),
             };
 
         foreach (var role in user.Roles)
         {
-            claims.Add(new Claim(ClaimTypes.Role, role.Name));
+            claims.Add(new (ClaimTypes.Role, role.Name));
         }
 
-        this._logger.LogInformation($"Returned claims for user with id: {user.Id.ToString()}.");
+        this._logger.LogInformation($"Returned claims for User with Id: {user.Id}.");
 
         return claims;
+    }
+
+    private async Task CheckAndUpgradeToUserAsync(User user, CancellationToken cancellationToken)
+    {
+        if (user.Roles.Any(x => x.Name == "Guest") && !user.Roles.Any(x => x.Name == "User"))
+        {
+            if (!string.IsNullOrEmpty(user.PasswordHash) && (!string.IsNullOrEmpty(user.Email) || !string.IsNullOrEmpty(user.Phone)))
+            {
+                var role = await this._rolesRepository.GetRoleAsync(x => x.Name == "User", cancellationToken);
+                user.Roles.Add(role);
+            }
+        }
+    }
+
+    private async Task ValidateUserAsync(UserDto userDto, User user, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrEmpty(userDto.Email)) 
+        {
+            ValidateEmail(userDto.Email);
+            if (userDto.Email != user.Email 
+                && await this._usersRepository.ExistsAsync(x => x.Email == userDto.Email, cancellationToken))
+            {
+                throw new EntityAlreadyExistsException<User>("email", userDto.Email);
+            }
+        }
+
+        if (!string.IsNullOrEmpty(userDto.Phone)) 
+        {
+            ValidatePhone(userDto.Phone);
+            if (userDto.Phone != user.Phone 
+                && await this._usersRepository.ExistsAsync(x => x.Phone == userDto.Phone, cancellationToken))
+            {
+                throw new EntityAlreadyExistsException<User>("phone", userDto.Phone);
+            }
+        }
     }
 
     private void ValidateEmail(string email)
@@ -290,7 +353,7 @@ public class UserManager : IUserManager
         }
     }
 
-    private void ValidateNumber(string phone)
+    private void ValidatePhone(string phone)
     {
         string regex = @"^\+[0-9]{1,15}$";
 

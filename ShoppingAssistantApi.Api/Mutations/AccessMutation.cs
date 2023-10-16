@@ -7,14 +7,14 @@ namespace ShoppingAssistantApi.Api.Mutations;
 public class AccessMutation
 {
     public Task<TokensModel> LoginAsync(AccessUserModel login, CancellationToken cancellationToken,
-    [Service] IUserManager userManager)
-    => userManager.LoginAsync(login, cancellationToken);
+        [Service] IUserManager userManager)
+        => userManager.LoginAsync(login, cancellationToken);
 
     public Task<TokensModel> AccessGuestAsync(AccessGuestModel guest, CancellationToken cancellationToken,
-    [Service] IUserManager userManager)
-    => userManager.AccessGuestAsync(guest, cancellationToken);
+        [Service] IUserManager userManager)
+        => userManager.AccessGuestAsync(guest, cancellationToken);
 
-    public Task<TokensModel> RefreshUserTokenAsync(TokensModel model, CancellationToken cancellationToken,
-    [Service] ITokensService tokensService)
-    => tokensService.RefreshUserAsync(model, cancellationToken);
+    public Task<TokensModel> RefreshAccessTokenAsync(TokensModel model, CancellationToken cancellationToken,
+        [Service] IUserManager userManager)
+        => userManager.RefreshAccessTokenAsync(model, cancellationToken);
 }

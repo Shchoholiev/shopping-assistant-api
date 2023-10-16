@@ -27,8 +27,6 @@ public class UsersRepository : BaseRepository<User>, IUsersRepository
         var updateDefinition = Builders<User>.Update
             .Set(u => u.Email, user.Email)
             .Set(u => u.Phone, user.Phone)
-            .Set(u => u.RefreshToken, user.RefreshToken)
-            .Set(u => u.RefreshTokenExpiryDate, user.RefreshTokenExpiryDate)
             .Set(u => u.GuestId, user.GuestId)
             .Set(u => u.Roles, user.Roles)
             .Set(u => u.PasswordHash, user.PasswordHash)
@@ -42,7 +40,5 @@ public class UsersRepository : BaseRepository<User>, IUsersRepository
 
         return await this._collection.FindOneAndUpdateAsync(
             Builders<User>.Filter.Eq(u => u.Id, user.Id), updateDefinition, options, cancellationToken);
-
     }
-
 }

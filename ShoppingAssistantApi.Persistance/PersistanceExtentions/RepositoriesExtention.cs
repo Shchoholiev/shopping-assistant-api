@@ -13,6 +13,7 @@ public static class RepositoriesExtention
 
         services.AddScoped<IRolesRepository, RolesRepository>();
         services.AddScoped<IUsersRepository, UsersRepository>();
+        services.AddScoped<IRefreshTokensRepository, RefreshTokensRepository>();
         services.AddScoped<IWishlistsRepository, WishlistsRepository>();
         services.AddScoped<IMessagesRepository, MessagesRepository>();
         services.AddScoped<IProductsRepository, ProductsRepository>();

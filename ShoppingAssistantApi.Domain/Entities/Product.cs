@@ -6,17 +6,17 @@ namespace ShoppingAssistantApi.Domain.Entities;
 public class Product : EntityBase
 {
 
-    public required string Url { get; set; }
+    public string Url { get; set; }
 
-    public required string Name { get; set; }
+    public string Name { get; set; }
 
-    public required string Description { get; set; }
+    public string Description { get; set; }
 
-    public required double Rating { get; set; }
+    public double Rating { get; set; }
 
-    public required string[] ImagesUrls { get; set; }
+    public string[] ImagesUrls { get; set; }
 
-    public required bool WasOpened { get; set; }
+    public bool WasOpened { get; set; }
 
-    public required ObjectId WishlistId { get; set; }
+    public ObjectId WishlistId { get; set; }
 }

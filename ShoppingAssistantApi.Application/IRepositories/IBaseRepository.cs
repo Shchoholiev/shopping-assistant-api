@@ -1,4 +1,5 @@
-﻿using ShoppingAssistantApi.Domain.Common;
+﻿using MongoDB.Bson;
+using ShoppingAssistantApi.Domain.Common;
 using System.Linq.Expressions;
 
 namespace ShoppingAssistantApi.Application.IRepositories;
@@ -6,6 +7,10 @@ namespace ShoppingAssistantApi.Application.IRepositories;
 public interface IBaseRepository<TEntity> where TEntity : EntityBase
 {
     Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken);
+
+    Task<TEntity> GetOneAsync(ObjectId id, CancellationToken cancellationToken);
+
+    Task<TEntity> GetOneAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken);
 
     Task<List<TEntity>> GetPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken);
 

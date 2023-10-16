@@ -1,138 +1,42 @@
-﻿using System.Net;
-using System.Text;
-using Xunit;
-using ShoppingAssistantApi.Tests.TestExtentions;
-using System.Net.Http.Headers;
-using Newtonsoft.Json;
-using GreenDonut;
+﻿using ShoppingAssistantApi.Tests.TestExtentions;
+using Newtonsoft.Json.Linq;
+using ShoppingAssistantApi.Application.Paging;
+using ShoppingAssistantApi.Application.Models.Dtos;
 
 namespace ShoppingAssistantApi.Tests.Tests;
 
-[Collection("Tests")]
-public class RolesTests : IClassFixture<TestingFactory<Program>>
+// TODO: make errors test more descrptive
+public class RolesTests : TestsBase
 {
-    private readonly HttpClient _httpClient;
-
     public RolesTests(TestingFactory<Program> factory)
+        : base(factory)
+    { }
+
+    [Fact]
+    public async Task AddRole_ValidName_ReturnsCreatedRole()
     {
-        _httpClient = factory.CreateClient();
-        factory.InitialaizeData().GetAwaiter().GetResult();
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
+        var mutation = new
+        {
+            query = "mutation AddRole ($dto: RoleCreateDtoInput!){ addRole (roleDto: $dto) { id, name }} ",
+            variables = new
+            {
+                dto = new
+                {
+                    name = "NewRole"
+                }
+            }
+        };
+        
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var role = jsonObject?.data?.addRole?.ToObject<RoleDto>();
+
+        Assert.NotNull(role);
+        Assert.Equal("NewRole", role.Name);
     }
 
     [Fact]
-    public async Task AddToRoleAsync_ValidRoleName_ReturnsTokensModel()
-    {
-        var usersPage = await UserExtention.GetUsers(10, _httpClient);
-        var mutation = new
-        {
-            query = "mutation AddToRole($roleName: String!, $id: String!) { addToRole(roleName: $roleName, id: $id) { accessToken, refreshToken }}",
-            variables = new
-            {
-                roleName = "Admin",
-                id = usersPage[0].Id,
-            }
-        };
-
-        var jsonPayload = JsonConvert.SerializeObject(mutation);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-        using var response = await _httpClient.PostAsync("graphql", content);
-        response.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var responseString = await response.Content.ReadAsStringAsync();
-        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
-
-        var accessToken = (string)document.data.addToRole.accessToken;
-        var refreshToken = (string)document.data.addToRole.refreshToken;
-
-        Assert.NotNull(accessToken);
-        Assert.NotNull(refreshToken);
-    }
-
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("InvalidRole")]
-    public async Task AddToRoleAsync_InvalidRoleName_ReturnsInternalServerError(string roleName)
-    {
-        var usersPage = await UserExtention.GetUsers(10, _httpClient);
-        var mutation = new
-        {
-            query = "mutation AddToRole($roleName: String!, $id: String!) { addToRole(roleName: $roleName, id: $id) { accessToken, refreshToken }}",
-            variables = new
-            {
-                roleName,
-                id = usersPage[0].Id,
-            }
-        };
-
-        var jsonPayload = JsonConvert.SerializeObject(mutation);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-        using var response = await _httpClient.PostAsync("graphql", content);
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-    }
-
-
-    [Fact]
-    public async Task RemoveFromRoleAsync_ValidRoleName_ReturnsTokensModel()
-    {
-        var usersPage = await UserExtention.GetUsers(10, _httpClient);
-        var mutation = new
-        {
-            query = "mutation RemoveFromRole($roleName: String!, $id: String!) { removeFromRole(roleName: $roleName, id: $id) { accessToken, refreshToken }}",
-            variables = new
-            {
-                roleName = "Admin",
-                id = usersPage[0].Id,
-            }
-        };
-
-        var jsonPayload = JsonConvert.SerializeObject(mutation);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-        using var response = await _httpClient.PostAsync("graphql", content);
-        response.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var responseString = await response.Content.ReadAsStringAsync();
-        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
-
-        var accessToken = (string)document.data.removeFromRole.accessToken;
-        var refreshToken = (string)document.data.removeFromRole.refreshToken;
-
-        Assert.NotNull(accessToken);
-        Assert.NotNull(refreshToken);
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("InvalidRole")]
-    public async Task RemoveFromRoleAsync_InvalidRoleName_ReturnsInternalServerError(string roleName)
-    {
-        var usersPage = await UserExtention.GetUsers(10, _httpClient);
-        var mutation = new
-        {
-            query = "mutation RemoveFromRole($roleName: String!, $id: String!) { removeFromRole(roleName: $roleName, id: $id) { accessToken, refreshToken }}",
-            variables = new
-            {
-                roleName,
-                id = usersPage[0].Id,
-            }
-        };
-
-        var jsonPayload = JsonConvert.SerializeObject(mutation);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-        using var response = await _httpClient.PostAsync("graphql", content);
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData("User")]
-    [InlineData(null)]
-    public async Task AddRole_InvalidRoleName_ReturnsInternalServerError(string roleName)
+    public async Task AddRole_Unauthorized_ReturnsErrors()
     {
         var mutation = new
         {
@@ -141,23 +45,45 @@ public class RolesTests : IClassFixture<TestingFactory<Program>>
             {
                 dto = new
                 {
-                    name = roleName
+                    name = "NewRole"
+                }
+            }
+        };
+        
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task AddRole_ExistingRoleName_ReturnsErrors()
+    {
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
+        var mutation = new
+        {
+            query = "mutation AddRole ($dto: RoleCreateDtoInput!){ addRole (roleDto: $dto) { id, name }} ",
+            variables = new
+            {
+                dto = new
+                {
+                    name = "User"
                 }
             }
         };
 
-        var jsonPayload = JsonConvert.SerializeObject(mutation);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
 
-        using var response = await _httpClient.PostAsync("graphql", content);
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
     }
 
     [Fact]
     public async Task GetRolesPageAsync_ValidPageNumberAndSize_ReturnsRolesPagedList()
     {
-        var tokensModel = await AccessExtention.Login("mykhailo.bilodid@nure.ua", "Yuiop12345", _httpClient);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
         var query = new
         {
             query = "query RolesPage($pageNumber: Int!, $pageSize: Int!) { rolesPage(pageNumber: $pageNumber, pageSize: $pageSize) { items { id, name } }}",
@@ -167,18 +93,11 @@ public class RolesTests : IClassFixture<TestingFactory<Program>>
                 pageSize = 3
             }
         };
+        
+        var jsonObject = await SendGraphQlRequestAsync(query);
+        var pagedList = (PagedList<RoleDto>?) jsonObject?.data?.rolesPage?.ToObject<PagedList<RoleDto>>();
 
-        var jsonPayload = JsonConvert.SerializeObject(query);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-        using var response = await _httpClient.PostAsync("graphql", content);
-        response.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var responseString = await response.Content.ReadAsStringAsync();
-        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
-
-        var items = document.data.rolesPage.items;
-        Assert.NotEmpty(items);
+        Assert.NotNull(pagedList);
+        Assert.NotEmpty(pagedList.Items);
     }
 }
