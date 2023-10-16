@@ -6,7 +6,6 @@ using Newtonsoft.Json.Linq;
 
 namespace ShoppingAssistantApi.Tests.Tests;
 
-// TODO: make errors test more descrptive
 public class WishlistsTests : TestsBase
 {
     // From DbInitializer
@@ -16,14 +15,23 @@ public class WishlistsTests : TestsBase
 
     private const string TestingUserPassword = "Yuiop12345";
 
-    private const string TestingWishlistId = "ab79cde6f69abcd3efab65cd";
+    private const string TestingNotExistingWishlistId = "1234567890abcdef12345678";
+
+    private const string TestingValidWishlistName = "Gaming PC";
+
+    private const WishlistTypes TestingValidWishlistType = WishlistTypes.Product;
+
+    private const string TestingUnauthorizedWishlistId = "ab6c2c2d9edf39abcd1ef9ab";
+
+    private const string TestingValidWishlistId = "ab79cde6f69abcd3efab65cd";
+
 
     public WishlistsTests(TestingFactory<Program> factory)
         : base(factory)
     { }
 
     [Fact]
-    public async Task StartPersonalWishlistAsync_ValidWishlist_ReturnsNewWishlist()
+    public async Task StartPersonalWishlist_ValidWishlist_ReturnsNewWishlist()
     {
         await LoginAsync(TestingUserEmail, TestingUserPassword);
         var mutation = new
@@ -93,7 +101,7 @@ public class WishlistsTests : TestsBase
                 }",
             variables = new
             {
-                wishlistId = TestingWishlistId
+                wishlistId = TestingValidWishlistId
             }
         };
 
@@ -101,8 +109,8 @@ public class WishlistsTests : TestsBase
         var wishlist = (WishlistDto?) jsonObject?.data?.personalWishlist?.ToObject<WishlistDto>();
 
         Assert.NotNull(wishlist);
-        Assert.Equal("Gaming PC", wishlist.Name);
-        Assert.Equal(WishlistTypes.Product.ToString(), wishlist.Type);
+        Assert.Equal(TestingValidWishlistName, wishlist.Name);
+        Assert.Equal(TestingValidWishlistType.ToString(), wishlist.Type);
         Assert.Equal(TestingUserId, wishlist.CreatedById); 
     }
 
@@ -121,7 +129,7 @@ public class WishlistsTests : TestsBase
                 }",
             variables = new
             {
-                wishlistId = TestingWishlistId,
+                wishlistId = TestingValidWishlistId,
                 dto = new
                 {
                     text = MessageText
@@ -139,7 +147,7 @@ public class WishlistsTests : TestsBase
     }
 
     [Fact]
-    public async Task GetMessagesPageFromPersonalWishlist_ValidPageNumberAndSize_ReturnsPage()
+    public async Task GetMessagesPageFromPersonalWishlist_ValidPageNumberAndSizeValidWishlistIdOrAuthorizedAccess_ReturnsPage()
     {
         await LoginAsync(TestingUserEmail, TestingUserPassword);
         var mutation = new
@@ -158,7 +166,7 @@ public class WishlistsTests : TestsBase
                 }",
             variables = new
             {
-                wishlistId = "ab79cde6f69abcd3efab95cd", // From DbInitializer 
+                wishlistId = TestingValidWishlistId,
                 pageNumber = 1,
                 pageSize = 2
             }
@@ -169,12 +177,116 @@ public class WishlistsTests : TestsBase
         
         Assert.NotNull(pagedList);
         Assert.NotEmpty(pagedList.Items);
-        Assert.Equal("Third Message", pagedList.Items.FirstOrDefault()?.Text);
-        Assert.Equal(MessageRoles.User.ToString(), pagedList.Items.FirstOrDefault()?.Role);
+        Assert.Equal("Message 6", pagedList.Items.FirstOrDefault()?.Text);
+        Assert.Equal(MessageRoles.Application.ToString(), pagedList.Items.FirstOrDefault()?.Role);
     }
 
     [Fact]
-    public async Task StartPersonalWishlistAsync_InvalidWishlist_ReturnsErrors()
+    public async Task AddProductToPersonalWishlist_ValidProduct_ReturnsNewProduct()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                mutation addProductToPersonalWishlist($wishlistId: String!, $dto: ProductCreateDtoInput!) {
+                    addProductToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) {
+                        url, name, description, rating, imagesUrls, wasOpened
+                    } 
+                }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                dto = new
+                {
+                    url = "https://www.amazon.com/url",
+                    name = "Generic name",
+                    description = "Generic description",
+                    rating = 4.8,
+                    imagesUrls = new string[]
+                    {
+                        "https://www.amazon.com/image-url-1",
+                        "https://www.amazon.com/image-url-2"
+                    },
+                    wasOpened = false
+                }
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var product = (ProductDto?) jsonObject?.data?.addProductToPersonalWishlist?.ToObject<ProductDto>();
+
+        Assert.NotNull(product);
+        Assert.Equal("https://www.amazon.com/url", product.Url);
+        Assert.Equal("Generic name", product.Name);
+        Assert.Equal("Generic description", product.Description);
+        Assert.Equal(4.8, product.Rating);
+        Assert.Equal("https://www.amazon.com/image-url-1", product.ImagesUrls[0]);
+    }
+
+    [Fact]
+    public async Task GetProductsPageFromPersonalWishlist_ValidPageNumberAndSizeValidWishlistIdOrAuthorizedAccess_ReturnsPage()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query productsPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    productsPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, url, name, description, rating, imagesUrls, wasOpened, wishlistId },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                pageNumber = 1,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<ProductDto>?) jsonObject?.data?.productsPageFromPersonalWishlist?.ToObject<PagedList<ProductDto>>();
+
+        Assert.NotNull(pagedList);
+        Assert.Equal("Samsung 970 EVO Plus SSD 2TB NVMe M.2 Internal Solid State Hard Drive, V-NAND Technology, Storage and Memory Expansion for Gaming, Graphics w/ Heat Control, Max Speed, MZ-V7S2T0B/AM ", pagedList.Items.LastOrDefault()?.Name);
+        Assert.Equal(TestingValidWishlistId, pagedList.Items.LastOrDefault()?.WishlistId);
+    }
+
+    [Fact]
+    public async Task DeletePersonalWishlist_ValidWishlistIdOrAuthorizedAccess_ReturnsWishlist()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                mutation deletePersonalWishlist($wishlistId: String!) {
+                    deletePersonalWishlist (wishlistId: $wishlistId) {
+                        createdById, id, name, type
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var wishlist = (WishlistDto?) jsonObject?.data?.deletePersonalWishlist?.ToObject<WishlistDto>();
+
+        Assert.NotNull(wishlist);
+        Assert.Equal(TestingValidWishlistId, wishlist.Id);
+        Assert.Equal(TestingValidWishlistName, wishlist.Name);
+        Assert.Equal(TestingValidWishlistType.ToString(), wishlist.Type);
+        Assert.Equal(TestingUserId, wishlist.CreatedById);
+    }
+
+    [Fact]
+    public async Task StartPersonalWishlist_InvalidWishlist_ReturnsErrors()
     {
         await LoginAsync(TestingUserEmail, TestingUserPassword);
         var mutation = new
@@ -203,7 +315,113 @@ public class WishlistsTests : TestsBase
     }
 
     [Fact]
-    public async Task GetPersonalWishlist_InvalidWishlistId_ReturnsErrors()
+    public async Task GetPersonalWishlistsPage_PageNumberGreaterThanAvailablePages_ReturnsEmptyList()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query personalWishlistsPage($pageNumber: Int!, $pageSize: Int!) {
+                    personalWishlistsPage(pageNumber: $pageNumber, pageSize: $pageSize) {
+                        items { createdById, id, name, type }
+                    }
+                }",
+            variables = new
+            {
+                pageNumber = 100,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<WishlistDto>?) jsonObject?.data?.personalWishlistsPage?.ToObject<PagedList<WishlistDto>>();
+
+        Assert.NotNull(pagedList);
+        Assert.Empty(pagedList.Items);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlistsPage_PageNumberLessThan1_ReturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query personalWishlistsPage($pageNumber: Int!, $pageSize: Int!) {
+                    personalWishlistsPage(pageNumber: $pageNumber, pageSize: $pageSize) {
+                        items { createdById, id, name, type }
+                    }
+                }",
+            variables = new
+            {
+                pageNumber = 0,
+                pageSize = 1
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlistsPage_PageSizeGreaterThanAvailableEntities_ReturnsPage()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query personalWishlistsPage($pageNumber: Int!, $pageSize: Int!) {
+                    personalWishlistsPage(pageNumber: $pageNumber, pageSize: $pageSize) {
+                        items { createdById, id, name, type }
+                    }
+                }",
+            variables = new
+            {
+                pageNumber = 1,
+                pageSize = 100
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<WishlistDto>?) jsonObject?.data?.personalWishlistsPage?.ToObject<PagedList<WishlistDto>>();
+
+        Assert.NotNull(pagedList);
+        Assert.NotEmpty(pagedList.Items);
+        Assert.Equal(TestingUserId, pagedList.Items.FirstOrDefault()?.CreatedById);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlistsPage_PageSizeLessThan0_ReturnsPage()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query personalWishlistsPage($pageNumber: Int!, $pageSize: Int!) {
+                    personalWishlistsPage(pageNumber: $pageNumber, pageSize: $pageSize) {
+                        items { createdById, id, name, type }
+                    }
+                }",
+            variables = new
+            {
+                pageNumber = 1,
+                pageSize = -1
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<WishlistDto>?) jsonObject?.data?.personalWishlistsPage?.ToObject<PagedList<WishlistDto>>();
+
+        Assert.NotNull(pagedList);
+        Assert.NotEmpty(pagedList.Items);
+        Assert.Equal(TestingUserId, pagedList.Items.FirstOrDefault()?.CreatedById);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlist_NotExistingWishlistId_ReturnsErrors()
     {
         await LoginAsync(TestingUserEmail, TestingUserPassword);
         var query = new
@@ -216,7 +434,7 @@ public class WishlistsTests : TestsBase
                 }",
             variables = new
             {
-                wishlistId = "1234567890abcdef12345678" // Invalid wishlistId
+                wishlistId = TestingNotExistingWishlistId
             }
         };
 
@@ -228,7 +446,397 @@ public class WishlistsTests : TestsBase
     }
 
     [Fact]
-    public async Task GetPersonalWishlist_UnauthorizedAccess_ReturnsErrors()
+    public async Task GetMessagesPageFromPersonalWishlist_PageNumberGreaterThanAvailablePages_ReturnsEmptyList()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, text, role, createdById },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                pageNumber = 100,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<MessageDto>?) jsonObject?.data?.messagesPageFromPersonalWishlist?.ToObject<PagedList<MessageDto>>();
+
+        Assert.NotNull(pagedList);
+        Assert.Empty(pagedList.Items);
+    }
+
+    [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_PageNumberLessThan1_ReturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, text, role, createdById },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                pageNumber = 0,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_PageSizeGreaterThanAvailableEntities_ReturnsPage()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, text, role, createdById },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                pageNumber = 1,
+                pageSize = 10
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<MessageDto>?) jsonObject?.data?.messagesPageFromPersonalWishlist?.ToObject<PagedList<MessageDto>>();
+
+        Assert.NotNull(pagedList);
+        Assert.Equal("Message 6", pagedList.Items.FirstOrDefault()?.Text);
+        Assert.Equal(MessageRoles.Application.ToString(), pagedList.Items.FirstOrDefault()?.Role);
+    }
+
+    [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_PageSizeLessThan0_ReturnsPage()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, text, role, createdById },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                pageNumber = 1,
+                pageSize = -2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<MessageDto>?) jsonObject?.data?.messagesPageFromPersonalWishlist?.ToObject<PagedList<MessageDto>>();
+
+        Assert.NotNull(pagedList);
+        Assert.Equal("Message 6", pagedList.Items.FirstOrDefault()?.Text);
+        Assert.Equal(MessageRoles.Application.ToString(), pagedList.Items.FirstOrDefault()?.Role);
+    }
+
+    [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_NotExistingWishlistId_ReturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, text, role, createdById },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingNotExistingWishlistId,
+                pageNumber = 1,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task GetMessagesPageFromPersonalWishlist_OtherUserWishlistId_ReturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query messagesPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    messagesPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, text, role, createdById },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingUnauthorizedWishlistId,
+                pageNumber = 1,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task AddProductToPersonalWishlist_NotExistingWishlistId_RturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                mutation addProductToPersonalWishlist($wishlistId: String!, $dto: ProductCreateDtoInput!) {
+                    addProductToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) {
+                        url, name, description, rating, imagesUrls, wasOpened
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingNotExistingWishlistId,
+                dto = new
+                {
+                    url = "https://www.amazon.com/url",
+                    name = "Generic name",
+                    description = "Generic description",
+                    rating = 4.8,
+                    imagesUrls = new string[]
+                    {
+                        "https://www.amazon.com/image-url-1",
+                        "https://www.amazon.com/image-url-2"
+                    },
+                    wasOpened = false
+                }
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task AddProductToPersonalWishlist_OtherUserWishlistId_RturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                mutation addProductToPersonalWishlist($wishlistId: String!, $dto: ProductCreateDtoInput!) {
+                    addProductToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) {
+                        url, name, description, rating, imagesUrls, wasOpened
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingUnauthorizedWishlistId,
+                dto = new
+                {
+                    url = "https://www.amazon.com/url",
+                    name = "Generic name",
+                    description = "Generic description",
+                    rating = 4.8,
+                    imagesUrls = new string[]
+                    {
+                        "https://www.amazon.com/image-url-1",
+                        "https://www.amazon.com/image-url-2"
+                    },
+                    wasOpened = false
+                }
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task GetProductsPageFromPersonalWishlist_PageNumberGreaterThanAvailablePages_ReturnsEmptyList()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query productsPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    productsPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, url, name, description, rating, imagesUrls, wasOpened, wishlistId },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                pageNumber = 100,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<WishlistDto>?) jsonObject?.data?.productsPageFromPersonalWishlist?.ToObject<PagedList<WishlistDto>>();
+
+        Assert.NotNull(pagedList);
+        Assert.Empty(pagedList.Items);
+    }
+
+    [Fact]
+    public async Task GetProductsPageFromPersonalWishlist_PageNumberLessThan1_ReturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query productsPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    productsPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, url, name, description, rating, imagesUrls, wasOpened, wishlistId },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                pageNumber = 0,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task GetProductsPageFromPersonalWishlist_PageSizeGreaterThanAvailableEntities_ReturnsPage()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = "query productsPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) { productsPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) { hasNextPage, hasPreviousPage, items { id, url, name, description, rating, imagesUrls, wasOpened, wishlistId }, pageNumber, pageSize, totalItems, totalPages } }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                pageNumber = 1,
+                pageSize = 100
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<ProductDto>?) jsonObject?.data?.productsPageFromPersonalWishlist?.ToObject<PagedList<ProductDto>>();
+
+        Assert.NotNull(pagedList);
+
+        Assert.Equal("Samsung 970 EVO Plus SSD 2TB NVMe M.2 Internal Solid State Hard Drive, V-NAND Technology, Storage and Memory Expansion for Gaming, Graphics w/ Heat Control, Max Speed, MZ-V7S2T0B/AM ", pagedList.Items.ToList()[1].Name);
+        Assert.Equal(TestingValidWishlistId, pagedList.Items.ToList()[1].WishlistId);
+    }
+
+    [Fact]
+    public async Task GetProductsPageFromPersonalWishlist_PageSizeLessThan0_ReturnsPage()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = "query productsPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) { productsPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) { hasNextPage, hasPreviousPage, items { id, url, name, description, rating, imagesUrls, wasOpened, wishlistId }, pageNumber, pageSize, totalItems, totalPages } }",
+            variables = new
+            {
+                wishlistId = TestingValidWishlistId,
+                pageNumber = 1,
+                pageSize = -2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var pagedList = (PagedList<ProductDto>?) jsonObject?.data?.productsPageFromPersonalWishlist?.ToObject<PagedList<ProductDto>>();
+
+        Assert.NotNull(pagedList);
+
+        Assert.Equal("Samsung 970 EVO Plus SSD 2TB NVMe M.2 Internal Solid State Hard Drive, V-NAND Technology, Storage and Memory Expansion for Gaming, Graphics w/ Heat Control, Max Speed, MZ-V7S2T0B/AM ", pagedList.Items.ToList()[1].Name);
+        Assert.Equal(TestingValidWishlistId, pagedList.Items.ToList()[1].WishlistId);
+    }
+
+    [Fact]
+    public async Task GetPersonalWishlist_OtherUserWishlistId_ReturnsErrors()
     {
         await LoginAsync(TestingUserEmail, TestingUserPassword);
         var query = new
@@ -241,11 +849,127 @@ public class WishlistsTests : TestsBase
                 }",
             variables = new
             {
-                wishlistId = "ab6c2c2d9edf39abcd1ef9ab" // Other user's wishlist
+                wishlistId = TestingUnauthorizedWishlistId
             }
         };
 
         var jsonObject = await SendGraphQlRequestAsync(query);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task GetProductsPageFromPersonalWishlist_NotExistingWishlistId_ReturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query productsPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    productsPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, url, name, description, rating, imagesUrls, wasOpened, wishlistId },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingNotExistingWishlistId,
+                pageNumber = 0,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task GetProductsPageFromPersonalWishlist_OtherUserWishlistId_ReturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                query productsPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) {
+                    productsPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) {
+                        hasNextPage,
+                        hasPreviousPage,
+                        items { id, url, name, description, rating, imagesUrls, wasOpened, wishlistId },
+                        pageNumber,
+                        pageSize,
+                        totalItems,
+                        totalPages
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingUnauthorizedWishlistId,
+                pageNumber = 0,
+                pageSize = 2
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task DeletePersonalWishlist_NotExistingWishlistId_ReturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                mutation deletePersonalWishlist($wishlistId: String!) {
+                    deletePersonalWishlist (wishlistId: $wishlistId) { 
+                        createdById, id, name, type
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingNotExistingWishlistId
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+    [Fact]
+    public async Task DeletePersonalWishlist_OtherUserWishlistId_ReturnsError()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var mutation = new
+        {
+            query = @"
+                mutation deletePersonalWishlist($wishlistId: String!) {
+                    deletePersonalWishlist (wishlistId: $wishlistId) {
+                        createdById, id, name, type
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = TestingUnauthorizedWishlistId
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
         var errors = (JArray?) jsonObject?.errors;
 
         Assert.NotNull(errors);
@@ -266,7 +990,7 @@ public class WishlistsTests : TestsBase
                 }",
             variables = new
             {
-                wishlistId = "8125jad7g12", // Invalid wishlistId
+                wishlistId = TestingNotExistingWishlistId,
                 dto = new
                 {
                     text = "random text",
