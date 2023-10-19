@@ -9,4 +9,6 @@ public interface IProductService
     Task<List<string>> StartNewSearchAndReturnWishlist(Message message, CancellationToken cancellationToken);
     
     Task<List<string>> GetProductFromSearch(Message message, CancellationToken cancellationToken);
+    
+    Task<List<string>> GetRecommendationsForProductFromSearch(Message message, CancellationToken cancellationToken);
 }
