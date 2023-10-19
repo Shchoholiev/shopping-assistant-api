@@ -5,7 +5,7 @@ using ShoppingAssistantApi.Domain.Entities;
 
 namespace ShoppingAssistantApi.Infrastructure.Services;
 
-public class ProductServices
+public class ProductService
 {
     /*private readonly IWishlistsRepository _wishlistsRepository;
     
