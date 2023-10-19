@@ -1,6 +1,7 @@
 using System;
 using System.Net.Http.Headers;
 using System.Text;
+using MongoDB.Bson;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using ShoppingAssistantApi.Application.IServices;
@@ -25,32 +26,24 @@ public class OpenAiService : IOpenAiService
     public OpenAiService(HttpClient client)
     {
         _httpClient = client;
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", "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");
+        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
-
-    
 
     public async Task<OpenAiMessage> GetChatCompletion(ChatCompletionRequest chat, CancellationToken cancellationToken)
     {
         chat.Stream = false; 
         var jsonBody = JsonConvert.SerializeObject(chat, _jsonSettings);
-        var body = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        var body = new StringContent(jsonBody, Encoding.UTF8, /*change file appsettings.Develop.json*/"application/json");
 
-        
-        using var httpResponse = await _httpClient.PostAsync("chat/completions", body, cancellationToken);
+        using var httpResponse = await _httpClient.PostAsync(/*api url*/"https://api.openai.com/v1/completions", body, cancellationToken);
 
         var responseBody = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
 
-        var responses = new List<OpenAiMessage>();
-        foreach (var line in responseBody.Split(new[] {"\n\n"}, StringSplitOptions.RemoveEmptyEntries))
-        {
-            if (line.Trim() == "[DONE]") break;
+        var data = JsonConvert.DeserializeObject<OpenAiResponse>(responseBody);
 
-            var json = line.Substring(6);
-            var OpenAiMessage = JsonConvert.DeserializeObject<OpenAiMessage>(json, _jsonSettings);
-            responses.Add(OpenAiMessage);
-        }
-
-        return responses.Count > 0 ? responses.Last() : null;
+        return data.Choices[0].Message;
     }
 
     public async IAsyncEnumerable<string> GetChatCompletionStream(ChatCompletionRequest chat, CancellationToken cancellationToken)
@@ -59,7 +52,7 @@ public class OpenAiService : IOpenAiService
         var jsonBody = JsonConvert.SerializeObject(chat, _jsonSettings);
         
         var body = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-        var request = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/completions")
         {
             Content = body
         };
