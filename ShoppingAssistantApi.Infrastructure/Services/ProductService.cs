@@ -83,7 +83,7 @@ public class ProductService : IProductService
         return productNames.Select(productName => productName.Name).ToList();
     }
 
-    public async Task<List<string>> GetRecommendationsForProductFromSearch(Message message, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<string> GetRecommendationsForProductFromSearchStream(Message message, CancellationToken cancellationToken)
     {
         List<OpenAiMessage> messages = new List<OpenAiMessage>()
         {
@@ -93,18 +93,22 @@ public class ProductService : IProductService
                 Content = PromptForRecommendationsForProductSearch(message.Text)
             }
         };
-    
+
         var chatRequest = new ChatCompletionRequest
         {
             Messages = messages
         };
 
-        var openAiMessage = await _openAiService.GetChatCompletion(chatRequest, cancellationToken);
+        await foreach (var response in _openAiService.GetChatCompletionStream(chatRequest, cancellationToken))
+        {
+            var openAiContent = JObject.Parse(response);
+            var recommendations = openAiContent["Recommendation"]?.ToObject<List<string>>() ?? new List<string>();
 
-        var openAiContent = JObject.Parse(openAiMessage.Content);
-        var recommendations = openAiContent["Recommendation"]?.ToObject<List<string>>() ?? new List<string>();
-    
-        return recommendations;
+            foreach (var recommendation in recommendations)
+            {
+                yield return recommendation;
+            }
+        }
     }
     
     public string PromptForProductSearch(string message)

@@ -46,17 +46,14 @@ public class ProductTests
             Content = "{ \"Name\": [{ \"Name\": \"NVIDIA GeForce RTX 3080\" }, { \"Name\": \"AMD Radeon RX 6900 XT\" }] }"
         };
         
-        var openAiServiceMock = new Mock<IOpenAiService>();
-        var wishlistsServiceMock = new Mock<IWishlistsService>();
-        
-        openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
+        _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
             .Returns((ChatCompletionRequest request, CancellationToken token) =>
             {
                 var asyncEnumerable = new List<string> { expectedOpenAiMessage.Content }.ToAsyncEnumerable();
                 return asyncEnumerable;
             });
     
-        wishlistsServiceMock.Setup(x => x.StartPersonalWishlistAsync(It.IsAny<WishlistCreateDto>(), cancellationToken))
+        _wishListServiceMock.Setup(x => x.StartPersonalWishlistAsync(It.IsAny<WishlistCreateDto>(), cancellationToken))
             .ReturnsAsync(new WishlistDto
             {
                 Id = "someID",
@@ -65,7 +62,7 @@ public class ProductTests
                 CreatedById = "someId"
             });
         
-        var productService = new ProductService(openAiServiceMock.Object, wishlistsServiceMock.Object);
+        var productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object);
 
         List<ProductName> productNames = null;
         WishlistDto createdWishList = null;
@@ -128,20 +125,31 @@ public class ProductTests
             Role = "user"
         };
         var cancellationToken = CancellationToken.None;
-        
+
         var expectedOpenAiMessage = new OpenAiMessage
         {
             Role = OpenAiRole.User,
             Content = "{ \"Recommendation\": [\"Recommendation 1\", \"Recommendation 2\"] }"
         };
-        _openAiServiceMock.Setup(x => x.GetChatCompletion(It.IsAny<ChatCompletionRequest>(), cancellationToken))
-            .ReturnsAsync(expectedOpenAiMessage);
         
-        var recommendations = await _productServiceMock.Object.GetRecommendationsForProductFromSearch(message, cancellationToken);
+        _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
+            .Returns((ChatCompletionRequest request, CancellationToken token) =>
+            {
+                var asyncEnumerable = new List<string> { expectedOpenAiMessage.Content }.ToAsyncEnumerable();
+                return asyncEnumerable;
+            });
+
+        var recommendations = new List<string>();
+        var productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object);
         
+        await foreach (var recommendation in productService.GetRecommendationsForProductFromSearchStream(message, cancellationToken))
+        {
+            recommendations.Add(recommendation);
+        }
+
         var openAiContent = JObject.Parse(expectedOpenAiMessage.Content);
         Assert.NotNull(openAiContent);
         Assert.True(openAiContent.ContainsKey("Recommendation"));
-        
+        Assert.Equal(new List<string> { "Recommendation 1", "Recommendation 2" }, recommendations);
     }
 }
