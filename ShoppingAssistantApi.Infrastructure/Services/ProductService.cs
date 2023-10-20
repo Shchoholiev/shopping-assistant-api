@@ -59,29 +59,46 @@ public class ProductService : IProductService
         }
     }
 
-    public async Task<List<string>> GetProductFromSearch(Message message, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<string> GetProductFromSearch(Message message, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         List<OpenAiMessage> messages = new List<OpenAiMessage>()
         {
             new OpenAiMessage()
             {
                 Role = OpenAiRole.User,
-                Content = PromptForProductSearch(message.Text)
+                Content = PromptForProductSearchWithQuestion(message.Text)
             }
         };
-        
+
         var chatRequest = new ChatCompletionRequest
         {
             Messages = messages
         };
 
-        var openAiMessage = await _openAiService.GetChatCompletion(chatRequest, cancellationToken);
+        await foreach (var response in _openAiService.GetChatCompletionStream(chatRequest, cancellationToken))
+        {
+            var openAiContent = JObject.Parse(response);
+            var productNames = openAiContent["Name"]?.ToObject<List<ProductName>>();
 
-        var openAiContent = JObject.Parse(openAiMessage.Content);
-        var productNames = openAiContent["Name"]?.ToObject<List<ProductName>>() ?? new List<ProductName>();
-        
-        return productNames.Select(productName => productName.Name).ToList();
+            if (productNames != null && productNames.Any())
+            {
+                foreach (var productName in productNames)
+                {
+                    yield return productName.Name;
+                }
+            }
+            else
+            {
+                var questions = openAiContent["AdditionalQuestion"]?.ToObject<List<Question>>() ?? new List<Question>();
+            
+                foreach (var question in questions)
+                {
+                    yield return question.QuestionText;
+                }
+            }
+        }
     }
+
 
     public async IAsyncEnumerable<string> GetRecommendationsForProductFromSearchStream(Message message, CancellationToken cancellationToken)
     {
@@ -135,6 +152,23 @@ public class ProductService : IProductService
                                  $"\n\nGive recommendations for this question: {message} " +
                                  "\nType of answer: " +
                                  "\n\nRecommendation :<Recommendation>";
+        return  promptForSearch;
+    }
+    
+    public string PromptForProductSearchWithQuestion(string message)
+    {
+        string promptForSearch = "Return information in JSON. " +
+                                 "\nAsk additional questions to the user if there is not enough information." +
+                                 "\nIf there are several answer options, list them. " +
+                                 "\nYou don't need to display questions and products together!" +
+                                 "\nDo not output any text other than JSON!!!" +
+                                 $"\n\nQuestion: {message}" +
+                                 "\n\nif you can ask questions to clarify the choice, then ask them" +
+                                 "\nType of answer:" +
+                                 "\nAdditionalQuestion:<question>[]" +
+                                 "\n\nif there are no questions, then just display the products" +
+                                 "\nType of answer:" +
+                                 "\nName:<name>";
         return  promptForSearch;
     }
 }

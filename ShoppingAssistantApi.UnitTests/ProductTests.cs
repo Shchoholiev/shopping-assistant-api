@@ -76,14 +76,13 @@ public class ProductTests
         }
 
         var openAiContent = JObject.Parse(expectedOpenAiMessage.Content);
-
-        Assert.True(openAiContent.ContainsKey("Name"));
+        
         Assert.NotNull(createdWishList);
         Assert.NotNull(productNames);
     }
     
     [Fact]
-    public async Task GetProductFromSearch_ReturnsProductList()
+    public async Task GetProductFromSearch_ReturnsProductListWithName()
     {
         var message = new Message
         {
@@ -93,25 +92,70 @@ public class ProductTests
             Role = "user"
         };
         var cancellationToken = CancellationToken.None;
-        
-        var expectedProductList = new List<string> { "NVIDIA GeForce RTX 3080", "AMD Radeon RX 6900 XT" };
-        _productServiceMock.Setup(x => x.GetProductFromSearch(message, cancellationToken))
-            .ReturnsAsync(expectedProductList);
-        
+
         var expectedOpenAiMessage = new OpenAiMessage
         {
             Role = OpenAiRole.User,
             Content = "{ \"Name\": [{ \"Name\": \"NVIDIA GeForce RTX 3080\" }, { \"Name\": \"AMD Radeon RX 6900 XT\" }] }"
         };
-        _openAiServiceMock.Setup(x => x.GetChatCompletion(It.IsAny<ChatCompletionRequest>(), cancellationToken))
-            .ReturnsAsync(expectedOpenAiMessage);
+
+        _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
+            .Returns(new List<string> { expectedOpenAiMessage.Content }.ToAsyncEnumerable());
+
+        var productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object);
+
+        var productList = new List<string>();
+    
+        await foreach (var product in productService.GetProductFromSearch(message, cancellationToken))
+        {
+            productList.Add(product);
+        }
 
         var openAiContent = JObject.Parse(expectedOpenAiMessage.Content);
         var productNames = openAiContent["Name"].ToObject<List<ProductName>>();
-        var productList = productNames.Select(info => info.Name).ToList();
-        
+        var expectedProductList = productNames.Select(info => info.Name).ToList();
+    
         Assert.Equal(expectedProductList, productList);
+        Assert.NotNull(openAiContent);
         Assert.True(openAiContent.ContainsKey("Name"));
+    }
+    
+    [Fact]
+    public async Task GetProductFromSearch_ReturnsProductListWithQuestion()
+    {
+        var message = new Message
+        {
+            Id = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
+            Text = "what are the best graphics cards you know?",
+            CreatedById = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
+            Role = "user"
+        };
+        var cancellationToken = CancellationToken.None;
+
+        var expectedOpenAiMessage = new OpenAiMessage
+        {
+            Role = OpenAiRole.User,
+            Content = "{ \"AdditionalQuestion\": [{ \"QuestionText\": \"What specific MacBook model are you using?\" }," +
+                      " { \"QuestionText\": \"Do you have any preferences for brand or capacity?\" }] }"
+        };
+
+        _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
+            .Returns(new List<string> { expectedOpenAiMessage.Content }.ToAsyncEnumerable());
+
+        var productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object);
+
+        var productList = new List<string>();
+    
+        await foreach (var product in productService.GetProductFromSearch(message, cancellationToken))
+        {
+            productList.Add(product);
+        }
+
+        var openAiContent = JObject.Parse(expectedOpenAiMessage.Content);
+        var productNames = openAiContent["AdditionalQuestion"].ToObject<List<Question>>();
+        
+        Assert.NotNull(openAiContent);
+        Assert.True(openAiContent.ContainsKey("AdditionalQuestion"));
     }
     
     [Fact]

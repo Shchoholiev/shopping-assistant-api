@@ -9,8 +9,8 @@ namespace ShoppingAssistantApi.Application.IServices;
 public interface IProductService
 {
     IAsyncEnumerable<(List<ProductName> ProductNames, WishlistDto Wishlist)> StartNewSearchAndReturnWishlist(Message message, CancellationToken cancellationToken);
-    
-    Task<List<string>> GetProductFromSearch(Message message, CancellationToken cancellationToken);
+
+    IAsyncEnumerable<string> GetProductFromSearch(Message message, CancellationToken cancellationToken);
 
     IAsyncEnumerable<string> GetRecommendationsForProductFromSearchStream(Message message,
         CancellationToken cancellationToken);
