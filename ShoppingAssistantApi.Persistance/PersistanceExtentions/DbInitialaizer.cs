@@ -1,9 +1,11 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using ShoppingAssistantApi.Application.IServices.Identity;
 using ShoppingAssistantApi.Domain.Entities;
 using ShoppingAssistantApi.Domain.Enums;
+using ShoppingAssistantApi.Infrastructure.Services.Identity;
 using ShoppingAssistantApi.Persistance.Database;
 
 namespace ShoppingAssistantApi.Persistance.PersistanceExtentions;
@@ -18,15 +20,15 @@ public class DbInitialaizer
 
     private readonly IMongoCollection<Product> _productCollection;
 
-    private readonly IPasswordHasher _passwordHasher;
+    private readonly PasswordHasher passwordHasher;
 
-    public DbInitialaizer(IServiceProvider serviceProvider, IPasswordHasher passwordHasher)
+    public DbInitialaizer(IServiceProvider serviceProvider)
     {
+        passwordHasher = new PasswordHasher(new Logger<PasswordHasher>(new LoggerFactory()));
         _wishlistCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Wishlist>("Wishlists");
         _userCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<User>("Users");
         _roleCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Role>("Roles");
         _productCollection = serviceProvider.GetService<MongoDbContext>().Db.GetCollection<Product>("Product");
-        _passwordHasher = passwordHasher;
     }
 
     public async Task InitialaizeDb(CancellationToken cancellationToken)
@@ -49,7 +51,7 @@ public class DbInitialaizer
             {
                 Id = ObjectId.Parse("6533bb29c8c22b038c71cf46"),
                 GuestId = Guid.NewGuid(),
-                Roles = {guestRole},
+                Roles = new List<Role> {guestRole},
                 CreatedById = ObjectId.Parse("6533bb29c8c22b038c71cf46"),
                 CreatedDateUtc = DateTime.UtcNow,
                 LastModifiedById = ObjectId.Parse("6533bb29c8c22b038c71cf46"),
@@ -61,14 +63,14 @@ public class DbInitialaizer
             {
                 Id = ObjectId.Parse("6533bde5755745116be42ce7"),
                 GuestId = Guid.NewGuid(),
-                Roles =
+                Roles = new List<Role>
                 {
                     guestRole,
                     userRole
                 },
                 Phone = "+380953326869",
                 Email = "mykhailo.bilodid@nure.ua",
-                PasswordHash = this._passwordHasher.Hash("Yuiop12345"),
+                PasswordHash = this.passwordHasher.Hash("Yuiop12345"),
                 CreatedById = ObjectId.Parse("6533bde5755745116be42ce7"),
                 CreatedDateUtc = DateTime.UtcNow,
                 LastModifiedById = ObjectId.Parse("6533bde5755745116be42ce7"),
@@ -80,7 +82,7 @@ public class DbInitialaizer
             {
                 Id = ObjectId.Parse("6533bded80fbc6e96250575b"),
                 GuestId = Guid.NewGuid(),
-                Roles = 
+                Roles = new List<Role>
                 {
                     guestRole,
                     userRole,
@@ -88,7 +90,7 @@ public class DbInitialaizer
                 },
                 Phone = "+380953826869",
                 Email = "shopping.assistant.team@gmail.com",
-                PasswordHash = this._passwordHasher.Hash("Yuiop12345"),
+                PasswordHash = this.passwordHasher.Hash("Yuiop12345"),
                 CreatedById = ObjectId.Parse("6533bded80fbc6e96250575b"),
                 CreatedDateUtc = DateTime.UtcNow,
                 LastModifiedById = ObjectId.Parse("6533bded80fbc6e96250575b"),
@@ -99,14 +101,14 @@ public class DbInitialaizer
             {
                 Id = ObjectId.Parse("6533bdf9efaca5bb0894f992"),
                 GuestId = Guid.NewGuid(),
-                Roles =
+                Roles = new List<Role>
                 {
                     guestRole,
                     userRole
                 },
                 Phone = "+380983326869",
                 Email = "vitalii.krasnorutski@nure.ua",
-                PasswordHash = this._passwordHasher.Hash("Yuiop12345"),
+                PasswordHash = this.passwordHasher.Hash("Yuiop12345"),
                 CreatedById = ObjectId.Parse("6533bdf9efaca5bb0894f992"),
                 CreatedDateUtc = DateTime.UtcNow,
                 LastModifiedById = ObjectId.Parse("6533bdf9efaca5bb0894f992"),
@@ -117,14 +119,14 @@ public class DbInitialaizer
             {
                 Id = ObjectId.Parse("6533be06d1b78a76c664ddae"),
                 GuestId = Guid.NewGuid(),
-                Roles =
+                Roles = new List<Role>
                 {
                     guestRole,
                     userRole
                 },
                 Phone = "+380953326888",
                 Email = "serhii.shchoholiev@nure.ua",
-                PasswordHash = this._passwordHasher.Hash("Yuiop12345"),
+                PasswordHash = this.passwordHasher.Hash("Yuiop12345"),
                 CreatedById = ObjectId.Parse("6533be06d1b78a76c664ddae"),
                 CreatedDateUtc = DateTime.UtcNow,
                 LastModifiedById = ObjectId.Parse("6533be06d1b78a76c664ddae"),

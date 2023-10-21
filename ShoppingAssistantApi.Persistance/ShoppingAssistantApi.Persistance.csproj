@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ShoppingAssistantApi.Application\ShoppingAssistantApi.Application.csproj" />
     <ProjectReference Include="..\ShoppingAssistantApi.Domain\ShoppingAssistantApi.Domain.csproj" />
+    <ProjectReference Include="..\ShoppingAssistantApi.Infrastructure\ShoppingAssistantApi.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
