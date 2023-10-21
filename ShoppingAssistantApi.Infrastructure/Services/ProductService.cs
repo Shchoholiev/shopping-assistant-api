@@ -25,6 +25,13 @@ public class ProductService : IProductService
         _wishlistsService = wishlistsService;
     }
 
+    public IAsyncEnumerable<ServerSentEvent> SearchProductAsync(string wishlistId, MessageCreateDto message, CancellationToken cancellationToken)
+    {
+        // get all messages from wishlist
+
+        throw new NotImplementedException();
+    }
+
     public async IAsyncEnumerable<(List<ProductName> ProductNames, WishlistDto Wishlist)> StartNewSearchAndReturnWishlist(Message message, CancellationToken cancellationToken)
     {
         List<OpenAiMessage> messages = new List<OpenAiMessage>()
