@@ -36,14 +36,12 @@ app.AddGlobalUserMiddleware();
 app.MapGraphQL();
 
 app.MapControllers();
-/*
-using var scope = app.Services.CreateScope();
-var serviceProvider = scope.ServiceProvider;
-using var cancellationTokenSource = new CancellationTokenSource();
-var cancellationToken = cancellationTokenSource.Token;
-var initializer = new DbInitialaizer(serviceProvider);
-initializer.InitialaizeDb(cancellationToken);
-*/
+
+// using var scope = app.Services.CreateScope();
+// var serviceProvider = scope.ServiceProvider;
+// var initializer = new DbInitialaizer(serviceProvider);
+// await initializer.InitialaizeDb(CancellationToken.None);
+
 app.Run();
 
 public partial class Program { }
