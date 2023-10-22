@@ -22,15 +22,15 @@ public static class ServicesExtention
         return services;
     }
 
-    public static IServiceCollection AddOpenAiHttpClient(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddHttpClient(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpClient(
             "OpenAiHttpClient",
             client =>
             {
-                client.BaseAddress = new Uri(configuration.GetValue<string>("OpenAi:OpenAiApiUri"));
+                client.BaseAddress = new Uri(configuration.GetValue<string>("ApiUri"));
                 client.DefaultRequestHeaders.Authorization = 
-                    new AuthenticationHeaderValue("Bearer", configuration.GetValue<string>("OpenAi:OpenAiApiKey"));
+                    new AuthenticationHeaderValue("Bearer", configuration.GetValue<string>("ApiKey"));
             });
 
         return services;
