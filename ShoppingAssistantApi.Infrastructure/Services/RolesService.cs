@@ -33,14 +33,16 @@ public class RolesService : IRolesService
         entity.CreatedDateUtc = DateTime.UtcNow;
         entity.LastModifiedDateUtc = DateTime.UtcNow;
         await this._repository.AddAsync(entity, cancellationToken);
+
         return this._mapper.Map<RoleDto>(entity);
     }
 
     public async Task<PagedList<RoleDto>> GetRolesPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken)
     {
         var entities = await this._repository.GetPageAsync(pageNumber, pageSize, cancellationToken);
-        var dtos = this._mapper.Map<List<RoleDto>>(entities);
         var count = await this._repository.GetTotalCountAsync();
+        var dtos = this._mapper.Map<List<RoleDto>>(entities);
+
         return new PagedList<RoleDto>(dtos, pageNumber, pageSize, count);
     }
 }

@@ -10,11 +10,13 @@ public interface IUserManager
 
     Task<TokensModel> LoginAsync(AccessUserModel login, CancellationToken cancellationToken);
 
-    Task<TokensModel> AddToRoleAsync(string roleName, string id, CancellationToken cancellationToken);
+    Task<UserDto> AddToRoleAsync(string roleName, string userId, CancellationToken cancellationToken);
 
-    Task<TokensModel> RemoveFromRoleAsync(string roleName, string id, CancellationToken cancellationToken);
+    Task<UserDto> RemoveFromRoleAsync(string roleName, string userId, CancellationToken cancellationToken);
 
     Task<UpdateUserModel> UpdateAsync(UserDto userDto, CancellationToken cancellationToken);
 
-    Task<UpdateUserModel> UpdateUserByAdminAsync(string id, UserDto userDto, CancellationToken cancellationToken);
+    Task<UserDto> UpdateUserByAdminAsync(string id, UserDto userDto, CancellationToken cancellationToken);
+
+    Task<TokensModel> RefreshAccessTokenAsync(TokensModel tokensModel, CancellationToken cancellationToken);
 }

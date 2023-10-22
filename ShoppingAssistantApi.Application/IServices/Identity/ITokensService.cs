@@ -1,5 +1,4 @@
-﻿using ShoppingAssistantApi.Application.Models.Identity;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 
 namespace ShoppingAssistantApi.Application.IServices.Identity;
 
@@ -9,5 +8,5 @@ public interface ITokensService
 
     string GenerateRefreshToken();
 
-    Task<TokensModel> RefreshUserAsync(TokensModel tokensModel, CancellationToken cancellationToken);
+    ClaimsPrincipal GetPrincipalFromExpiredToken(string token);
 }

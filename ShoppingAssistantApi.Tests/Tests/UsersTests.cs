@@ -1,222 +1,172 @@
 ﻿using ShoppingAssistantApi.Tests.TestExtentions;
-using System.Net.Http.Headers;
-using System.Net;
-using System.Text;
-using Xunit;
-using Newtonsoft.Json;
 using ShoppingAssistantApi.Application.Models.Dtos;
+using ShoppingAssistantApi.Application.Models.Identity;
+using Newtonsoft.Json.Linq;
+using ShoppingAssistantApi.Application.Paging;
 
 namespace ShoppingAssistantApi.Tests.Tests;
 
-[Collection("Tests")]
-public class UsersTests : IClassFixture<TestingFactory<Program>>
+// TODO: make errors test more descrptive
+public class UsersTests : TestsBase
 {
-    private readonly HttpClient _httpClient;
-
     public UsersTests(TestingFactory<Program> factory)
-    {
-        _httpClient = factory.CreateClient();
-        factory.InitialaizeData().GetAwaiter().GetResult();
-    }
+        : base(factory)
+    { }
 
     [Fact]
     public async Task UpdateUserAsync_ValidUserModel_ReturnsUpdateUserModel()
     {
-        var tokensModel = await AccessExtention.CreateGuest(Guid.NewGuid().ToString(), _httpClient);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
-
-        var user = await UserExtention.GetCurrentUser(_httpClient);
-
-        var roles = new object[1];
-
-        foreach(var role in user.Roles)
-        {
-            roles[0] = new
-            {
-                id = role.Id,
-                name = role.Name
-            };
-        }
-
+        await LoginAsync("test@gmail.com", "Yuiop12345");
+        var user = await GetCurrentUserAsync();
         var mutation = new
         {
-            query = "mutation UpdateUser($userDto: UserDtoInput!) { updateUser(userDto: $userDto) { tokens { accessToken, refreshToken }, user { email } }}",
+            query = @"
+                mutation UpdateUser($userDto: UserDtoInput!) { 
+                    updateUser(userDto: $userDto) { 
+                        tokens { accessToken, refreshToken }, 
+                        user { email, phone } 
+                    }
+                }",
             variables = new
             {
                 userDto = new
                 {
                     id = user.Id,
                     guestId = user.GuestId,
-                    roles = roles,
-                    email = "testing@gmail.com",
-                    password = "Yuiop12345",
-                    refreshTokenExpiryDate = user.RefreshTokenExpiryDate
+                    roles = user.Roles.Select(r => new { id = r.Id, name = r.Name }),
+                    email = user.Email,
+                    phone = "+12345678902",
                 }
             }
         };
 
-        var jsonPayload = JsonConvert.SerializeObject(mutation);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var tokens = (TokensModel?) jsonObject?.data?.updateUser?.tokens?.ToObject<TokensModel>();
+        var updatedUser = (UserDto?) jsonObject?.data?.updateUser?.user?.ToObject<UserDto>();
 
-        using var response = await _httpClient.PostAsync("graphql", content);
-        response.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var responseString = await response.Content.ReadAsStringAsync();
-        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
-
-        var accessTokenResult = (string)document.data.updateUser.tokens.accessToken;
-        var refreshTokenResult = (string)document.data.updateUser.tokens.refreshToken;
-        var userResult = JsonConvert.DeserializeObject<UserDto>(document.data.updateUser.user.ToString());
-
-        Assert.NotNull(accessTokenResult);
-        Assert.NotNull(refreshTokenResult);
-        Assert.NotNull(userResult.Email);
+        Assert.NotNull(tokens);
+        Assert.NotNull(tokens.AccessToken);
+        Assert.NotNull(tokens.RefreshToken);
+        Assert.NotNull(updatedUser);
+        Assert.NotNull(updatedUser.Email);
+        Assert.Equal(user.Email, updatedUser.Email);
+        Assert.Equal("+12345678902", updatedUser.Phone);
     }
 
     [Fact]
     public async Task UpdateUserByAdminAsync_ValidUserModel_ReturnsUpdateUserModel()
     {
-        var tokensModel = await AccessExtention.CreateGuest(new Guid().ToString(), _httpClient);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
-
-        var user = await UserExtention.GetCurrentUser(_httpClient);
-
-        var roles = new object[1];
-
-        foreach (var role in user.Roles)
-        {
-            roles[0] = new
-            {
-                id = role.Id,
-                name = role.Name,
-            };
-        }
-
+        await LoginAsync("test@gmail.com", "Yuiop12345");
+        var user = await GetCurrentUserAsync();
         var mutation = new
         {
-            query = "mutation UpdateUserByAdmin($id: String!, $userDto: UserDtoInput!) { updateUserByAdmin(id: $id, userDto: $userDto) { tokens { accessToken, refreshToken }, user { guestId } }}",
+            query = @"
+                mutation UpdateUserByAdmin($id: String!, $userDto: UserDtoInput!) { 
+                    updateUserByAdmin(id: $id, userDto: $userDto) { 
+                        email, 
+                        phone 
+                    }
+                }",
             variables = new
             {
                 id = user.Id,
                 userDto = new
                 {
                     id = user.Id,
-                    guestId = Guid.NewGuid().ToString(),
-                    roles = roles,
-                    refreshTokenExpiryDate = user.RefreshTokenExpiryDate
+                    guestId = user.GuestId,
+                    roles = user.Roles.Select(r => new { id = r.Id, name = r.Name }),
+                    email = user.Email,
+                    phone = "+12345678903",
                 }
             }
         };
 
-        var jsonPayload = JsonConvert.SerializeObject(mutation);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var updatedUser = (UserDto?) jsonObject?.data?.updateUserByAdmin?.ToObject<UserDto>();
 
-        using var response = await _httpClient.PostAsync("graphql", content);
-        response.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var responseString = await response.Content.ReadAsStringAsync();
-        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
-
-        var accessTokenResult = (string)document.data.updateUserByAdmin.tokens.accessToken;
-        var refreshToken = (string)document.data.updateUserByAdmin.tokens.refreshToken;
-        var updatedUserGuestId = (Guid)document.data.updateUserByAdmin.user.guestId;
-
-        Assert.NotNull(accessTokenResult);
-        Assert.NotNull(refreshToken);
-        Assert.NotEqual(user.GuestId, updatedUserGuestId);
+        Assert.NotNull(updatedUser);
+        Assert.NotNull(updatedUser.Email);
+        Assert.Equal(user.Email, updatedUser.Email);
+        Assert.Equal("+12345678903", updatedUser.Phone);
     }
 
     [Fact]
     public async Task GetUserAsync_ValidUserId_ReturnsUser()
     {
-        var tokensModel = await AccessExtention.Login("mykhailo.bilodid@nure.ua", "Yuiop12345", _httpClient);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
-
-        var usersPage = await UserExtention.GetUsers(10, _httpClient);
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
         var query = new
         {
-            query = "query User($id: String!) { user(id: $id) { id, email, phone }}",
+            query = @"
+                query User($id: String!) { 
+                    user(id: $id) { 
+                        id, 
+                        email 
+                    }
+                }",
             variables = new
             {
-                id = usersPage[0].Id,
+                id = "652c3b89ae02a3135d6409fc",
             }
         };
 
-        var jsonPayload = JsonConvert.SerializeObject(query);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var jsonObject = await SendGraphQlRequestAsync(query);
+        var user = (UserDto?) jsonObject?.data?.user?.ToObject<UserDto>();
 
-        using var response = await _httpClient.PostAsync("graphql", content);
-        response.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var responseString = await response.Content.ReadAsStringAsync();
-        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
-        var userResult = JsonConvert.DeserializeObject<UserDto>(document.data.user.ToString());
-        Assert.Equal(userResult.Id, usersPage[0].Id);
+        Assert.NotNull(user);
+        Assert.Equal("652c3b89ae02a3135d6409fc", user.Id);
+        Assert.Equal("test@gmail.com", user.Email);
     }
 
     [Fact]
     public async Task GetUserAsync_InvalidUserId_ReturnsInternalServerError()
     {
-        var tokensModel = await AccessExtention.Login("mykhailo.bilodid@nure.ua", "Yuiop12345", _httpClient);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
-
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
         var query = new
         {
-            query = "query User($id: String!) { user(id: $id) { id, email, phone }}",
+            query = "query User($id: String!) { user(id: $id) { id }}",
             variables = new
             {
-                id = "error",
+                id = "invalid",
             }
         };
 
-        var jsonPayload = JsonConvert.SerializeObject(query);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var jsonObject = await SendGraphQlRequestAsync(query);
+        var errors = (JArray?) jsonObject?.errors;
 
-        using var response = await _httpClient.PostAsync("graphql", content);
-        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
     }
 
     [Fact]
-    public async Task GetCurrentUserAsync_ValidCredentials_ReturnsCurrentUser()
+    public async Task GetCurrentUserAsync_Authorized_ReturnsCurrentUser()
     {
-        var tokensModel = await AccessExtention.Login("mykhailo.bilodid@nure.ua", "Yuiop12345", _httpClient);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
-
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
         var query = new
         {
-            query = "query CurrentUser { currentUser { id, email, phone }}",
-            variables = new { }
+            query = "query CurrentUser { currentUser { id, email, phone }}"
         };
 
-        var jsonPayload = JsonConvert.SerializeObject(query);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var jsonObject = await SendGraphQlRequestAsync(query);
+        var user = (UserDto?) jsonObject?.data?.currentUser?.ToObject<UserDto>();
 
-        using var response = await _httpClient.PostAsync("graphql", content);
-        response.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        var responseString = await response.Content.ReadAsStringAsync();
-        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
-
-        var user = JsonConvert.DeserializeObject<UserDto>(document.data.currentUser.ToString());
-        Assert.NotEmpty(user.Id);
-        Assert.NotEmpty(user.Email);
-        Assert.NotEmpty(user.Phone);
-        Assert.Equal(user.Email, "mykhailo.bilodid@nure.ua");
+        Assert.NotNull(user);
+        Assert.Equal("652c3b89ae02a3135d6408fc", user.Id);
+        Assert.Equal("admin@gmail.com", user.Email);
+        Assert.Equal("+12345678901", user.Phone);
     }
 
     [Fact]
     public async Task GetUsersPageAsync_ValidPageNumberAndSize_ReturnsUsersPage()
     {
-        var tokensModel = await AccessExtention.Login("mykhailo.bilodid@nure.ua", "Yuiop12345", _httpClient);
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokensModel.AccessToken);
-
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
         var query = new
         {
-            query = "query UsersPage($pageNumber: Int!, $pageSize: Int!) { usersPage(pageNumber: $pageNumber, pageSize: $pageSize) { items { id, email, phone }}}",
+            query = @"
+                query UsersPage($pageNumber: Int!, $pageSize: Int!) { 
+                    usersPage(pageNumber: $pageNumber, pageSize: $pageSize) { 
+                        items { id, email, phone }
+                    }
+                }",
             variables = new
             {
                 pageNumber = 1,
@@ -224,17 +174,128 @@ public class UsersTests : IClassFixture<TestingFactory<Program>>
             }
         };
 
-        var jsonPayload = JsonConvert.SerializeObject(query);
-        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        var jsonObject = await SendGraphQlRequestAsync(query);
+        var pagedList = (PagedList<UserDto>?) jsonObject?.data?.usersPage?.ToObject<PagedList<UserDto>>();
 
-        using var response = await _httpClient.PostAsync("graphql", content);
-        response.EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(pagedList);
+        Assert.NotEmpty(pagedList.Items);
+    }
 
-        var responseString = await response.Content.ReadAsStringAsync();
-        var document = JsonConvert.DeserializeObject<dynamic>(responseString);
 
-        var items = document.data.usersPage.items;
-        Assert.NotEmpty(items);
+    [Fact]
+    public async Task AddToRoleAsync_ValidRoleName_ReturnsTokensModel()
+    {
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
+        var mutation = new
+        {
+            query = @"
+                mutation AddToRole($roleName: String!, $userId: String!) { 
+                    addToRole(roleName: $roleName, userId: $userId) { 
+                        id, email, roles {
+                            name
+                        }
+                    }
+                }",
+            variables = new
+            {
+                roleName = "Admin",
+                userId = "652c3b89ae02a3135d6409fc",
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var user = (UserDto?) jsonObject?.data?.addToRole?.ToObject<UserDto>();
+
+        Assert.NotNull(user);
+        Assert.Equal("652c3b89ae02a3135d6409fc", user.Id);
+        Assert.Equal("test@gmail.com", user.Email);
+        Assert.Contains(user.Roles, r => r.Name == "Admin");
+    }
+
+    [Fact]
+    public async Task AddToRoleAsync_NonExistingRole_ReturnsErrors()
+    {
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
+        var mutation = new
+        {
+            query = @"
+                mutation AddToRole($roleName: String!, $userId: String!) { 
+                    addToRole(roleName: $roleName, userId: $userId) { 
+                        id, email, roles {
+                            name
+                        }
+                    }
+                }",
+            variables = new
+            {
+                roleName = "NonExistingRole",
+                id = "652c3b89ae02a3135d6409fc",
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
+    }
+
+
+    [Fact]
+    public async Task RemoveFromRoleAsync_ValidRoleName_ReturnsTokensModel()
+    {
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
+        var mutation = new
+        {
+            query = @"
+                mutation RemoveFromRole($roleName: String!, $userId: String!) { 
+                    removeFromRole(roleName: $roleName, userId: $userId) { 
+                        id, email, roles {
+                            name
+                        }
+                    }
+                }",
+            variables = new
+            {
+                roleName = "User",
+                userId = "652c3b89ae02a3135d6409fc",
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var user = (UserDto?) jsonObject?.data?.removeFromRole?.ToObject<UserDto>();
+
+        Assert.NotNull(user);
+        Assert.Equal("652c3b89ae02a3135d6409fc", user.Id);
+        Assert.Equal("test@gmail.com", user.Email);
+        Assert.DoesNotContain(user.Roles, r => r.Name == "User");
+    }
+
+    [Fact]
+    public async Task RemoveFromRoleAsync_NonExistingRole_ReturnsErrors()
+    {
+        await LoginAsync("admin@gmail.com", "Yuiop12345");
+        var mutation = new
+        {
+            query = @"
+                mutation RemoveFromRole($roleName: String!, $userId: String!) { 
+                    removeFromRole(roleName: $roleName, userId: $userId) { 
+                        id, email, roles {
+                            name
+                        }
+                    }
+                }",
+            variables = new
+            {
+                roleName = "NonExistingRole",
+                userId = "652c3b89ae02a3135d6409fc",
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(mutation);
+        var errors = (JArray?) jsonObject?.errors;
+
+        Assert.NotNull(errors);
+        Assert.True(errors.Count > 0);
     }
 }

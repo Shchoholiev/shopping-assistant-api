@@ -14,6 +14,12 @@
 	//			"protocol": "https"
 	//		}
 	// }
+
+	// Container is not working on M1 Mac
+	// "runArgs": [
+	// 	"--platform=linux/amd64"
+	// ],
+	
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -22,7 +28,8 @@
 				"patcx.vscode-nuget-gallery",
 				"mhutchie.git-graph",
 				"fernandoescolar.vscode-solution-explorer",
-				"formulahendry.dotnet-test-explorer"
+				"formulahendry.dotnet-test-explorer",
+				"GitHub.copilot"
 			]
 		}
 	}
