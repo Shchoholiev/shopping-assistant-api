@@ -14,73 +14,83 @@ public class OpenAiServiceTests
 
     private readonly Mock<HttpMessageHandler> _mockHttpMessageHandler;
 
-    private readonly HttpClient _httpClient;
+    private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
 
     public OpenAiServiceTests()
     {
-        // Mock any dependencies
+        _mockHttpClientFactory = new Mock<IHttpClientFactory>();
         _mockHttpMessageHandler = new Mock<HttpMessageHandler>();
-        _httpClient = new HttpClient(_mockHttpMessageHandler.Object);
-        _openAiService = new OpenAiService(_httpClient);
+
+        var client = new HttpClient(_mockHttpMessageHandler.Object);
+        client.BaseAddress = new Uri("https://www.google.com.ua/");
+
+        _mockHttpClientFactory
+            .Setup(factory => factory.CreateClient(It.IsAny<string>()))
+            .Returns(() =>
+            {
+                return client;
+            });
+        
+        _openAiService = new OpenAiService(_mockHttpClientFactory.Object);
     }
 
-    //[Fact]
-    //public async Task GetChatCompletion_ValidChat_ReturnsNewMessage()
-    //{
-    //    // Arrange
-    //    _mockHttpMessageHandler
-    //        .Protected()
-    //        .Setup<Task<HttpResponseMessage>>(
-    //            "SendAsync",
-    //            ItExpr.IsAny<HttpRequestMessage>(),
-    //            ItExpr.IsAny<CancellationToken>()
-    //        )
-    //        .ReturnsAsync(new HttpResponseMessage
-    //        {
-    //            StatusCode = HttpStatusCode.OK,
-    //            Content = new StringContent(@"
-    //            {
-    //                ""id"": ""chatcmpl-89OMdgTZXOLAXv7bPUJ4SwrPpS5Md"",
-    //                ""object"": ""chat.completion"",
-    //                ""created"": 1697249299,
-    //                ""model"": ""gpt-3.5-turbo-0613"",
-    //                ""choices"": [
-    //                    {
-    //                        ""index"": 0,
-    //                        ""message"": {
-    //                            ""role"": ""assistant"",
-    //                            ""content"": ""Hello World!""
-    //                        },
-    //                        ""finish_reason"": ""stop""
-    //                    }
-    //                ],
-    //                ""usage"": {
-    //                    ""prompt_tokens"": 10,
-    //                    ""completion_tokens"": 3,
-    //                    ""total_tokens"": 13
-    //                }
-    //            }"),
-    //        });
-            
-    //    var chat = new ChatCompletionRequest
-    //    {
-    //        Messages = new List<OpenAiMessage>
-    //        {
-    //            new OpenAiMessage
-    //            {
-    //                Role = OpenAiRole.User,
-    //                Content = "Return Hello World!"
-    //            }
-    //        }
-    //    };
+    [Fact]
+    public async Task GetChatCompletion_ValidChat_ReturnsNewMessage()
+    {
+        // Arrange
+        _mockHttpMessageHandler
+            .Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>()
+            )
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(@"
+                {
+                    ""id"": ""chatcmpl-89OMdgTZXOLAXv7bPUJ4SwrPpS5Md"",
+                    ""object"": ""chat.completion"",
+                    ""created"": 1697249299,
+                    ""model"": ""gpt-3.5-turbo-0613"",
+                    ""choices"": [
+                        {
+                            ""index"": 0,
+                            ""message"": {
+                                ""role"": ""assistant"",
+                                ""content"": ""Hello, World!""
+                            },
+                            ""finish_reason"": ""stop""
+                        }
+                    ],
+                    ""usage"": {
+                        ""prompt_tokens"": 10,
+                        ""completion_tokens"": 3,
+                        ""total_tokens"": 13
+                    }
+                }"),
+            });
 
-    //    // Act
-    //    var newMessage = await _openAiService.GetChatCompletion(chat, CancellationToken.None);
+        var chat = new ChatCompletionRequest
+        {
+            Messages = new List<OpenAiMessage>
+            {
+                new OpenAiMessage
+                {
+                    Role = OpenAiRole.User.RequestConvert(),
+                    Content = "Return Hello World!"
+                }
+            }
+        };
 
-    //    // Assert
-    //    Assert.NotNull(newMessage);
-    //    Assert.Equal("Hello World!", newMessage.Content);
-    //}
+        // Act
+        var newMessage = await _openAiService.GetChatCompletion(chat, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(newMessage);
+        Assert.Equal("Hello, World!", newMessage.Content);
+    }
 
     // TODO: Add more tests
 
@@ -128,7 +138,7 @@ public class OpenAiServiceTests
             {
                 new OpenAiMessage
                 {
-                    Role = OpenAiRole.User,
+                    Role = OpenAiRole.User.RequestConvert(),
                     Content = "Return Hello World!"
                 }
             }

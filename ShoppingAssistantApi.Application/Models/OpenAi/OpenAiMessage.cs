@@ -4,7 +4,7 @@ namespace ShoppingAssistantApi.Application.Models.OpenAi;
 
 public class OpenAiMessage
 {
-    public OpenAiRole Role { get; set; }
+    public string Role { get; set; }
 
     public string Content { get; set; }
 }
