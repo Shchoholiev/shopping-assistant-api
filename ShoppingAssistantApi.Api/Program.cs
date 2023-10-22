@@ -12,6 +12,7 @@ builder.Services.AddJWTTokenAuthentication(builder.Configuration);
 builder.Services.AddMapper();
 builder.Services.AddInfrastructure();
 builder.Services.AddServices();
+builder.Services.AddHttpClient(builder.Configuration);
 builder.Services.AddGraphQl();
 builder.Services.AddControllers();
 
