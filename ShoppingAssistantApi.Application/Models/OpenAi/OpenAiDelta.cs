@@ -1,8 +1,6 @@
-using ShoppingAssistantApi.Domain.Enums;
-
 namespace ShoppingAssistantApi.Application.Models.OpenAi;
 
-public class OpenAiMessage
+public class OpenAiDelta
 {
     public string Role { get; set; }
 
