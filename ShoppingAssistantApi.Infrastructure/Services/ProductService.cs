@@ -10,6 +10,7 @@ using ShoppingAssistantApi.Application.Models.OpenAi;
 using ShoppingAssistantApi.Application.Models.ProductSearch;
 using ShoppingAssistantApi.Domain.Entities;
 using ShoppingAssistantApi.Domain.Enums;
+using ServerSentEvent = ShoppingAssistantApi.Application.Models.ProductSearch.ServerSentEvent;
 
 namespace ShoppingAssistantApi.Infrastructure.Services;
 
@@ -18,6 +19,7 @@ public class ProductService : IProductService
     private readonly IWishlistsService _wishlistsService;
     
     private readonly IOpenAiService _openAiService;
+    
 
     public ProductService(IOpenAiService openAiService, IWishlistsService wishlistsService)
     {
@@ -25,13 +27,127 @@ public class ProductService : IProductService
         _wishlistsService = wishlistsService;
     }
     
-    public IAsyncEnumerable<ServerSentEvent> SearchProductAsync(string wishlistId, MessageCreateDto message, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<ServerSentEvent> SearchProductAsync(string wishlistId, MessageCreateDto message, CancellationToken cancellationToken)
     {
-        // Documentation: https://shchoholiev.atlassian.net/l/cp/JizkynhU
+        var chatRequest = new ChatCompletionRequest
+        {
+            Messages = new List<OpenAiMessage>
+            {
+                new OpenAiMessage
+                {
+                    Role = "User",
+                    Content = PromptForProductSearch(message.Text)
+                }
+            },
+            Stream = true
+        };
+    
+        var currentDataType = SearchEventType.Wishlist;
+        var dataTypeHolder = string.Empty;
 
-        throw new NotImplementedException();
+        await foreach (var data in _openAiService.GetChatCompletionStream(chatRequest, cancellationToken))
+        {
+            if (data.Contains("["))
+            {
+                dataTypeHolder = string.Empty;
+                dataTypeHolder += data;
+            }
+
+            else if (data.Contains("]"))
+            {
+                dataTypeHolder += data;
+                currentDataType = DetermineDataType(dataTypeHolder);
+            }
+
+            else if (dataTypeHolder=="[" && !data.Contains("["))
+            {
+                dataTypeHolder += data;
+            }
+
+            else
+            {
+                switch (currentDataType)
+                {
+                    case SearchEventType.Message:
+                        yield return new ServerSentEvent
+                        {
+                            Event = SearchEventType.Message,
+                            Data = data
+                        };
+                        break;
+
+                    case SearchEventType.Suggestion:
+                        yield return new ServerSentEvent
+                        {
+                            Event = SearchEventType.Suggestion,
+                            Data = data
+                        };
+                    break;
+
+                    case SearchEventType.Product:
+                        yield return new ServerSentEvent
+                        {
+                            Event = SearchEventType.Product,
+                            Data = data
+                        };
+                        break;
+
+                    case SearchEventType.Wishlist:
+                        yield return new ServerSentEvent
+                        { 
+                            Event = SearchEventType.Wishlist,
+                            Data = data
+                        };
+                        break;
+            
+                }
+                dataTypeHolder = string.Empty;
+            }
+        }
     }
 
+    private SearchEventType DetermineDataType(string dataTypeHolder)
+    {
+        if (dataTypeHolder.StartsWith("[Question]"))
+        {
+            return SearchEventType.Message;
+        }
+        else if (dataTypeHolder.StartsWith("[Options]"))
+        {
+            return SearchEventType.Suggestion;
+        }
+        else if (dataTypeHolder.StartsWith("[Message]"))
+        {
+            return SearchEventType.Message;
+        }
+        else if (dataTypeHolder.StartsWith("[Products]"))
+        {
+            return SearchEventType.Product;
+        }
+        else
+        {
+            return SearchEventType.Wishlist;
+        }
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     // TODO: remove all methods below
     public async IAsyncEnumerable<(List<ProductName> ProductNames, WishlistDto Wishlist)> StartNewSearchAndReturnWishlist(Message message, CancellationToken cancellationToken)
     {
@@ -39,7 +155,7 @@ public class ProductService : IProductService
         {
             new OpenAiMessage()
             {
-                Role = OpenAiRole.User,
+                Role = "User",
                 Content = PromptForProductSearch(message.Text)
             }
         };
@@ -73,7 +189,7 @@ public class ProductService : IProductService
         {
             new OpenAiMessage()
             {
-                Role = OpenAiRole.User,
+                Role = "User",
                 Content = PromptForProductSearchWithQuestion(message.Text)
             }
         };
@@ -114,7 +230,7 @@ public class ProductService : IProductService
         {
             new OpenAiMessage()
             {
-                Role = OpenAiRole.User,
+                Role = "User",
                 Content = PromptForRecommendationsForProductSearch(message.Text)
             }
         };

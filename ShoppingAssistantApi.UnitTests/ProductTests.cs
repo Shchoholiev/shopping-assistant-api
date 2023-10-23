@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Bson;
 using Moq;
 using Newtonsoft.Json.Linq;
@@ -28,13 +29,108 @@ public class ProductTests
         _productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object);
     }
     
+    
+    
+    /*[Fact]
+    public async Task SearchProductAsync_WhenWishlistIdIsEmpty_CreatesWishlistAndReturnsEvent()
+    {
+        // Arrange
+        string wishlistId = string.Empty; // Simulating an empty wishlist ID
+        var message = new MessageCreateDto
+        {
+            Text = "Your message text here"
+        };
+        var cancellationToken = CancellationToken.None;
+
+        // Define your expected new wishlist and event data
+        var newWishlistId = "123"; // Example wishlist ID
+        var expectedEvent = new ServerSentEvent
+        {
+            Event = SearchEventType.Wishlist,
+            Data = newWishlistId
+        };
+
+        // Mock the StartPersonalWishlistAsync method to return the expected wishlist
+        _wishListServiceMock.Setup(x => x.StartPersonalWishlistAsync(It.IsAny<WishlistCreateDto>(), CancellationToken.None))
+            .ReturnsAsync(new WishlistDto
+            {
+                Id = "123",
+                Name = "MacBook",
+                Type = WishlistTypes.Product.ToString(), // Use enum
+                CreatedById = "someId"
+            });
+
+        // Mock the GetChatCompletionStream method to provide SSE data
+        var sseData = new List<string> { "[Question] What is your question?" };
+        _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
+            .Returns(sseData.ToAsyncEnumerable());
+
+        // Act
+        var result = await _productService.SearchProductAsync(wishlistId, message, cancellationToken).ToListAsync();
+
+        // Assert
+        // Check if the first item in the result is the expected wishlist creation event
+        var firstEvent = result.FirstOrDefault();
+        Assert.NotNull(firstEvent);
+        Assert.Equal(expectedEvent.Event, firstEvent.Event);
+        Assert.Equal(expectedEvent.Data, firstEvent.Data);
+
+        // You can add more assertions to verify the other SSE events as needed.
+    }*/
+    
+    
+    [Fact]
+    public async Task SearchProductAsync_WhenWishlistExists_ReturnsExpectedEvents()
+    {
+        // Arrange
+        string wishlistId = "existingWishlistId"; // Simulating an existing wishlist ID
+        var message = new MessageCreateDto
+        {
+            Text = "Your message text here"
+        };
+        var cancellationToken = CancellationToken.None;
+
+        // Define your expected SSE data for the test
+        var expectedSseData = new List<string>
+        {
+            "[",
+            "Question",
+            "]",
+            " What",
+            " features",
+            " are",
+            " you",
+            " looking",
+            "?\n",
+            "[",
+            "Options",
+            "]",
+            " USB", 
+            "-C"
+        };
+
+        // Mock the GetChatCompletionStream method to provide the expected SSE data
+        _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
+            .Returns(expectedSseData.ToAsyncEnumerable());
+
+        // Act
+        var resultStream = _productService.SearchProductAsync(wishlistId, message, cancellationToken);
+
+        // Convert the result stream to a list of ServerSentEvent
+        var actualSseEvents = await resultStream.ToListAsync();
+
+        // Assert
+        // Check if the actual SSE events match the expected SSE events
+        Assert.Equal(8, actualSseEvents.Count);
+    }
+    
     [Fact]
     public async Task StartNewSearchAndReturnWishlist_CreatesWishlistObject()
     {
         // Arrange
         var expectedOpenAiMessage = new OpenAiMessage
         {
-            Role = OpenAiRole.User,
+            Role = "User",
             Content = "{ \"Name\": [{ \"Name\": \"NVIDIA GeForce RTX 3080\" }, { \"Name\": \"AMD Radeon RX 6900 XT\" }] }"
         };
         
@@ -93,7 +189,7 @@ public class ProductTests
 
         var expectedOpenAiMessage = new OpenAiMessage
         {
-            Role = OpenAiRole.User,
+            Role = "User",
             Content = "{ \"Name\": [{ \"Name\": \"NVIDIA GeForce RTX 3080\" }, { \"Name\": \"AMD Radeon RX 6900 XT\" }] }"
         };
 
@@ -132,7 +228,7 @@ public class ProductTests
 
         var expectedOpenAiMessage = new OpenAiMessage
         {
-            Role = OpenAiRole.User,
+            Role = "User",
             Content = "{ \"AdditionalQuestion\": [{ \"QuestionText\": \"What specific MacBook model are you using?\" }," +
                       " { \"QuestionText\": \"Do you have any preferences for brand or capacity?\" }] }"
         };
@@ -170,7 +266,7 @@ public class ProductTests
 
         var expectedOpenAiMessage = new OpenAiMessage
         {
-            Role = OpenAiRole.User,
+            Role = "User",
             Content = "{ \"Recommendation\": [\"Recommendation 1\", \"Recommendation 2\"] }"
         };
         
