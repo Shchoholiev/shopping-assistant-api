@@ -28,9 +28,9 @@ public static class ServicesExtention
             "OpenAiHttpClient",
             client =>
             {
-                client.BaseAddress = new Uri(configuration.GetValue<string>("ApiUri"));
+                client.BaseAddress = new Uri(configuration.GetValue<string>("OpenAi:ApiUrl"));
                 client.DefaultRequestHeaders.Authorization = 
-                    new AuthenticationHeaderValue("Bearer", configuration.GetValue<string>("ApiKey"));
+                    new AuthenticationHeaderValue("Bearer", configuration.GetValue<string>("OpenAi:ApiKey"));
             });
 
         return services;
