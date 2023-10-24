@@ -168,5 +168,6 @@ public class ProductTests
         // Assert
         
         Assert.NotNull(actualSseEvents);
+        Assert.Equal(3, actualSseEvents.Count);
     }
 }

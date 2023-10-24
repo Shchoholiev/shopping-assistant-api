@@ -19,15 +19,13 @@ public class ProductsTests : TestsBase
     public async Task StreamDataToClient_ReturnsExpectedResponse()
     {
         // Arrange
-        var wishlistId = "your_wishlist_id";
+        var wishlistId = "ab79cde6f69abcd3efab65cd";
         var message = new MessageCreateDto { Text = "Your message text" };
 
         // Act
-        var response = await _httpClient.PostAsJsonAsync($"http://localhost:5183/api/products/search/{"ab79cde6f69abcd3efab65cd"}", message);
+        var response = await _httpClient.PostAsJsonAsync($"http://127.0.0.1:5183//api/products/search/{wishlistId}", message);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-
-        // Додайте додаткові перевірки на відповідь, якщо необхідно
     }
 }
