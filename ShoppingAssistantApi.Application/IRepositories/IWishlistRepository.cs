@@ -8,5 +8,5 @@ public interface IWishlistsRepository : IBaseRepository<Wishlist>
 {
     Task<Wishlist> GetWishlistAsync(Expression<Func<Wishlist, bool>> predicate, CancellationToken cancellationToken);
 
-    Task<Wishlist> UpdateWishlistNameAsync(ObjectId id, string name, CancellationToken cancellationToken);
+    Task<Wishlist> UpdateWishlistNameAsync(ObjectId id, string name, ObjectId updatedById, CancellationToken cancellationToken);
 }

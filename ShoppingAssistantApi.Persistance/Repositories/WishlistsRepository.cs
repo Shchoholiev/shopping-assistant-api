@@ -1,7 +1,6 @@
 using System.Linq.Expressions;
 using MongoDB.Bson;
 using MongoDB.Driver;
-using ShoppingAssistantApi.Application.GlobalInstances;
 using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Domain.Entities;
 using ShoppingAssistantApi.Persistance.Database;
@@ -17,14 +16,15 @@ public class WishlistsRepository : BaseRepository<Wishlist>, IWishlistsRepositor
         return await (await _collection.FindAsync(predicate)).FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<Wishlist> UpdateWishlistNameAsync(ObjectId wishlistId, string newName, CancellationToken cancellationToken)
+    public async Task<Wishlist> UpdateWishlistNameAsync(ObjectId wishlistId, string newName,
+            ObjectId updatedById, CancellationToken cancellationToken)
     {
         var filterDefinition = Builders<Wishlist>.Filter.Eq(w => w.Id, wishlistId);
 
         var updateDefinition = Builders<Wishlist>.Update
             .Set(w => w.Name, newName)
             .Set(w => w.LastModifiedDateUtc, DateTime.UtcNow)
-            .Set(w => w.LastModifiedById, GlobalUser.Id);
+            .Set(w => w.LastModifiedById, updatedById);
 
         var options = new FindOneAndUpdateOptions<Wishlist>
         {

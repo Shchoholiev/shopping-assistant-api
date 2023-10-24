@@ -94,7 +94,8 @@ public class WishlistsService : IWishlistsService
 
         var openAiMessage = await _openAiService.GetChatCompletion(chatCompletionRequest, cancellationToken);
 
-        wishlist = await _wishlistsRepository.UpdateWishlistNameAsync(wishlist.Id, openAiMessage.Content, cancellationToken);
+        wishlist = await _wishlistsRepository.UpdateWishlistNameAsync(wishlist.Id, 
+                openAiMessage.Content, (ObjectId) GlobalUser.Id, cancellationToken);
 
         return _mapper.Map<WishlistDto>(wishlist);
     }
