@@ -11,6 +11,10 @@ public class WishlistsMutation
             [Service] IWishlistsService wishlistsService)
         => wishlistsService.StartPersonalWishlistAsync(dto, cancellationToken);
 
+    public Task<WishlistDto> GenerateNameForPersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken,
+            [Service] IWishlistsService wishlistsService)
+        => wishlistsService.GenerateNameForPersonalWishlistAsync(wishlistId, cancellationToken);
+
     public Task<MessageDto> AddMessageToPersonalWishlistAsync(string wishlistId, MessageCreateDto dto, CancellationToken cancellationToken,
             [Service] IWishlistsService wishlistsService)
         => wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, dto, cancellationToken);

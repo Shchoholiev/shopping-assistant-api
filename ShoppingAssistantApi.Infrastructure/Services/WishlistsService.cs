@@ -6,6 +6,7 @@ using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Application.IServices;
 using ShoppingAssistantApi.Application.Models.CreateDtos;
 using ShoppingAssistantApi.Application.Models.Dtos;
+using ShoppingAssistantApi.Application.Models.OpenAi;
 using ShoppingAssistantApi.Application.Paging;
 using ShoppingAssistantApi.Domain.Entities;
 using ShoppingAssistantApi.Domain.Enums;
@@ -22,12 +23,16 @@ public class WishlistsService : IWishlistsService
 
     private readonly IMapper _mapper;
 
-    public WishlistsService(IWishlistsRepository wishlistRepository, IMessagesRepository messageRepository, IProductsRepository productRepository, IMapper mapper)
+    private readonly IOpenAiService _openAiService;
+
+    public WishlistsService(IWishlistsRepository wishlistRepository, IMessagesRepository messageRepository,
+            IProductsRepository productRepository, IMapper mapper, IOpenAiService openAiService)
     {
         _wishlistsRepository = wishlistRepository;
         _messagesRepository = messageRepository;
         _productsRepository = productRepository;
         _mapper = mapper;
+        _openAiService = openAiService;
     }
 
     public async Task<WishlistDto> StartPersonalWishlistAsync(WishlistCreateDto dto, CancellationToken cancellationToken)
@@ -57,6 +62,42 @@ public class WishlistsService : IWishlistsService
         var createdMessage = await _messagesRepository.AddAsync(newMessage, cancellationToken);
 
         return _mapper.Map<WishlistDto>(createdWishlist);
+    }
+
+    public async Task<WishlistDto> GenerateNameForPersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken)
+    {
+        if (!ObjectId.TryParse(wishlistId, out var wishlistObjectId))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        var wishlist = await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
+
+        var firstUserMessage = (await _messagesRepository.GetPageAsync(1, 1, x => x.WishlistId == wishlistObjectId && x.Role == MessageRoles.User.ToString(), cancellationToken)).First();
+
+        var chatCompletionRequest = new ChatCompletionRequest
+        {
+            Messages = new List<OpenAiMessage>(2)
+            {
+                new OpenAiMessage
+                {
+                    Role = OpenAiRole.System.RequestConvert(),
+                    Content = "You will be provided with a general information about some product and your task is to generate general (not specific to any company or brand) chat name where recommendations on which specific product to buy will be given. Only name he product without adverbs and adjectives\nExamples:\n  - Prompt: Hub For Macbook. Answer: Macbook Hub\n  - Prompt: What is the best power bank for MacBook with capacity 20000 mAh and power near 20V? Answer: Macbook Powerbank"
+                },
+                new OpenAiMessage
+                {
+                    Role = OpenAiRole.User.RequestConvert(),
+                    Content = firstUserMessage.Text
+                }
+            }
+        };
+
+        var openAiMessage = await _openAiService.GetChatCompletion(chatCompletionRequest, cancellationToken);
+
+        wishlist = await _wishlistsRepository.UpdateWishlistNameAsync(wishlist.Id, 
+                openAiMessage.Content, (ObjectId) GlobalUser.Id, cancellationToken);
+
+        return _mapper.Map<WishlistDto>(wishlist);
     }
 
     public async Task<MessageDto> AddMessageToPersonalWishlistAsync(string wishlistId, MessageCreateDto dto, CancellationToken cancellationToken)

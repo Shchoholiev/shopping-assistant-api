@@ -62,6 +62,58 @@ public class WishlistsTests : TestsBase
     }
 
     [Fact]
+    public async Task GenerateNameForPersonalWishlist_ValidWishlistId_ReturnsNewName()
+    {
+        await LoginAsync(TestingUserEmail, TestingUserPassword);
+        var startWishlistMutation = new
+        {
+            query = @"
+                mutation startPersonalWishlist($dto: WishlistCreateDtoInput!) { 
+                    startPersonalWishlist (dto: $dto) { 
+                        id, name, type, createdById 
+                    } 
+                }",
+            variables = new
+            {
+                dto = new
+                {
+                    firstMessageText = "Mechanical keyboard for programming",
+                    type = WishlistTypes.Product.ToString()
+                }
+            }
+        };
+
+        var jsonObject = await SendGraphQlRequestAsync(startWishlistMutation);
+        var startWishlistResponse = (WishlistDto?) jsonObject?.data?.startPersonalWishlist?.ToObject<WishlistDto>();
+
+        Assert.NotNull(startWishlistResponse);
+
+        var generateWishlistNameMutation = new
+        {
+            query = @"
+                mutation genarateNameForPersonalWishlist($wishlistId: String!) {
+                    generateNameForPersonalWishlist(wishlistId: $wishlistId) {
+                        id, name, type, createdById
+                    }
+                }",
+            variables = new
+            {
+                wishlistId = startWishlistResponse.Id
+            }
+        };
+
+        jsonObject = await SendGraphQlRequestAsync(generateWishlistNameMutation);
+        var generateWishlistNameResponse = (WishlistDto?) jsonObject?.data?.generateNameForPersonalWishlist?.ToObject<WishlistDto>();
+
+        Assert.NotNull(generateWishlistNameResponse);
+        Assert.Equal(startWishlistResponse.Id, generateWishlistNameResponse.Id);
+
+        Assert.NotEqual($"{startWishlistResponse.Type} Search", generateWishlistNameResponse.Name);
+        Assert.NotEqual(String.Empty, generateWishlistNameResponse.Name);
+        Assert.NotEqual(null, generateWishlistNameResponse.Name);
+    }
+
+    [Fact]
     public async Task GetPersonalWishlistsPage_ValidPageNumberAndSize_ReturnsPage()
     {
         await LoginAsync(TestingUserEmail, TestingUserPassword);
