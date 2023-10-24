@@ -18,6 +18,7 @@ public static class ServicesExtention
         services.AddScoped<IUsersService, UsersService>();
         services.AddScoped<IWishlistsService, WishlistsService>();
         services.AddScoped<IOpenAiService, OpenAiService>();
+        services.AddScoped<IProductService, ProductService>();
 
         return services;
     }

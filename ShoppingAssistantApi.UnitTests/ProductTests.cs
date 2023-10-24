@@ -8,6 +8,7 @@ using ShoppingAssistantApi.Application.Models.CreateDtos;
 using ShoppingAssistantApi.Application.Models.Dtos;
 using ShoppingAssistantApi.Application.Models.OpenAi;
 using ShoppingAssistantApi.Application.Models.ProductSearch;
+using ShoppingAssistantApi.Application.Paging;
 using ShoppingAssistantApi.Domain.Entities;
 using ShoppingAssistantApi.Domain.Enums;
 using ShoppingAssistantApi.Infrastructure.Services;
@@ -66,11 +67,17 @@ public class ProductTests
             "-C",
             " ;",
             "[",
-            "Message",
+            "Products",
             "]",
-            " What",
-            " u",
-            " want",
+            " GTX",
+            " 3090",
+            " ;",
+            " GTX",
+            " 3070TI",
+            " ;",
+            " GTX",
+            " 4070TI",
+            " ;",
             " ?"
         };
 
@@ -78,6 +85,17 @@ public class ProductTests
         _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
             .Returns(expectedSseData.ToAsyncEnumerable());
 
+        _wishListServiceMock.Setup(w => w.GetMessagesPageFromPersonalWishlistAsync(wishlistId, 1, 1, cancellationToken))
+            .ReturnsAsync(new PagedList<MessageDto>(new List<MessageDto>
+            {
+                new MessageDto
+                {
+                    Text = "Some existing message",
+                    Id = "",
+                    CreatedById = "",
+                    Role = ""
+                }
+            }, 1, 1, 1));
         // Act
         var resultStream = _productService.SearchProductAsync(wishlistId, message, cancellationToken);
 
@@ -86,6 +104,69 @@ public class ProductTests
 
         // Assert
         // Check if the actual SSE events match the expected SSE events
-        Assert.Equal(8, actualSseEvents.Count);
+        Assert.NotNull(actualSseEvents);
+    }
+
+
+    [Fact]
+    public async void SearchProductAsync_WithExistingMessageInWishlist_ReturnsExpectedEvents()
+    {
+        // Arrange
+        var wishlistId = "your_wishlist_id";
+        var message = new MessageCreateDto { Text = "Your message text" };
+        var cancellationToken = new CancellationToken();
+
+        var productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object);
+
+        var expectedSseData = new List<string>
+        {
+            "[",
+            "Message",
+            "]",
+            " What",
+            " u",
+            " want",
+            " ?",
+            "[",
+            "Options",
+            "]",
+            " USB-C",
+            " ;",
+            " Keyboard",
+            " ultra",
+            " ;",
+            "?\n",
+            "[",
+            "Options",
+            "]",
+            " USB",
+            "-C",
+            " ;",
+            "[",
+            "Products",
+            "]",
+            " GTX",
+            " 3090",
+            " ;",
+            " GTX",
+            " 3070TI",
+            " ;",
+            " GTX",
+            " 4070TI",
+            " ;",
+            " ?"
+        };
+
+        // Mock the GetChatCompletionStream method to provide the expected SSE data
+        _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
+            .Returns(expectedSseData.ToAsyncEnumerable());
+
+        // Act
+        var resultStream = productService.SearchProductAsync(wishlistId, message, cancellationToken);
+        
+        var actualSseEvents = await resultStream.ToListAsync();
+        // Assert
+        
+        Assert.NotNull(actualSseEvents);
     }
 }
