@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using MongoDB.Bson;
 using MongoDB.Driver;
+using ShoppingAssistantApi.Application.GlobalInstances;
 using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Domain.Entities;
 using ShoppingAssistantApi.Persistance.Database;
@@ -20,7 +21,10 @@ public class WishlistsRepository : BaseRepository<Wishlist>, IWishlistsRepositor
     {
         var filterDefinition = Builders<Wishlist>.Filter.Eq(w => w.Id, wishlistId);
 
-        var updateDefinition = Builders<Wishlist>.Update.Set(w => w.Name, newName);
+        var updateDefinition = Builders<Wishlist>.Update
+            .Set(w => w.Name, newName)
+            .Set(w => w.LastModifiedDateUtc, DateTime.UtcNow)
+            .Set(w => w.LastModifiedById, GlobalUser.Id);
 
         var options = new FindOneAndUpdateOptions<Wishlist>
         {
