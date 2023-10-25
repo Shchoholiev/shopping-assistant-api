@@ -29,6 +29,14 @@ public class ProductService : IProductService
     
     public async IAsyncEnumerable<ServerSentEvent> SearchProductAsync(string wishlistId, MessageCreateDto message, CancellationToken cancellationToken)
     {
+        string promptForGpt =
+            "You are a Shopping Assistant that helps people find product recommendations. Ask user additional questions if more context needed." +
+            "\nYou must return data with one of the prefixes:" +
+            "\n[Question] - return question" +
+            "\n[Suggestions] - return semicolon separated suggestion how to answer to a question" +
+            "\n[Message] - return text" +
+            "\n[Products] - return semicolon separated product names";
+        
         var isFirstMessage = await _messagesRepository.GetCountAsync(message=>message.WishlistId==ObjectId.Parse((wishlistId)), cancellationToken);
 
         var chatRequest = new ChatCompletionRequest();
@@ -42,12 +50,7 @@ public class ProductService : IProductService
                     new OpenAiMessage
                     {
                         Role = OpenAiRole.System.ToString().ToLower(),
-                        Content = "You are a Shopping Assistant that helps people find product recommendations. Ask user additional questions if more context needed." +
-                                  "\nYou must return data with one of the prefixes:" +
-                                  "\n[Question] - return question" +
-                                  "\n[Suggestions] - return semicolon separated suggestion how to answer to a question" +
-                                  "\n[Message] - return text" +
-                                  "\n[Products] - return semicolon separated product names"
+                        Content = promptForGpt
                     },
                 
                     new OpenAiMessage()
@@ -70,17 +73,6 @@ public class ProductService : IProductService
                 Data = "What are you looking for?"
             };
             
-            yield return new ServerSentEvent
-            {
-                Event = SearchEventType.Suggestion,
-                Data = "Bicycle"
-            };
-            
-            yield return new ServerSentEvent
-            {
-                Event = SearchEventType.Suggestion,
-                Data = "Laptop"
-            };
         }
 
         if(isFirstMessage!=0)
@@ -89,6 +81,11 @@ public class ProductService : IProductService
                 .GetMessagesPageFromPersonalWishlistAsync(wishlistId, 1, 50, cancellationToken).Result.Items.ToList();
 
             var messagesForOpenAI = new List<OpenAiMessage>();
+            messagesForOpenAI.Add(new OpenAiMessage()
+            {
+                Role = OpenAiRole.System.ToString().ToLower(),
+                Content = promptForGpt
+            });
             foreach (var item in previousMessages )
             {
                 messagesForOpenAI.Add(
@@ -128,18 +125,6 @@ public class ProductService : IProductService
                             Text = messageBuffer.Text,
                         }, cancellationToken);
                     }
-                    if (dataTypeHolder=="[Products]" && productBuffer.Name!=null)
-                    {
-                        _wishlistsService.AddProductToPersonalWishlistAsync(wishlistId, new ProductCreateDto()
-                        {
-                            Url = "",
-                            Name = productBuffer.Name,
-                            Rating = 0,
-                            Description = "",
-                            ImagesUrls = new []{"", ""},
-                            WasOpened = false
-                        }, cancellationToken);
-                    }
                     dataTypeHolder = string.Empty;
                     dataTypeHolder += data;
                 }
@@ -169,7 +154,6 @@ public class ProductService : IProductService
                             break;
 
                         case SearchEventType.Suggestion:
-                            suggestionBuffer.Text += data;
                             if (data.Contains(";"))
                             {
                                 yield return new ServerSentEvent
@@ -178,11 +162,12 @@ public class ProductService : IProductService
                                     Data = suggestionBuffer.Text
                                 };
                                 suggestionBuffer.Text = string.Empty;
+                                break;
                             } 
+                            suggestionBuffer.Text += data;
                             break;
                         
                         case SearchEventType.Product:
-                            productBuffer.Name += data;
                             if (data.Contains(";"))
                             {
                                 yield return new ServerSentEvent
@@ -191,7 +176,20 @@ public class ProductService : IProductService
                                     Data = productBuffer.Name
                                 };
                                 productBuffer.Name = string.Empty;
+                                
+                                await _wishlistsService.AddProductToPersonalWishlistAsync(wishlistId, new ProductCreateDto()
+                                {
+                                    Url = "",
+                                    Name = productBuffer.Name,
+                                    Rating = 0,
+                                    Description = "",
+                                    ImagesUrls = new []{"", ""},
+                                    WasOpened = false
+                                }, cancellationToken);
+                                
+                                break;
                             }
+                            productBuffer.Name += data;
                             break;  
                     }
                 }

@@ -25,8 +25,10 @@ public class ProductsTests : TestsBase
 
         // Act
         var response = await _httpClient.PostAsJsonAsync($"http://127.0.0.1:5183/api/ProductsSearch/search/{wishlistId}", message);
-
+        var responseContent = await response.Content.ReadAsStringAsync();
+        
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(responseContent);
     }
 }
