@@ -99,6 +99,12 @@ public class ProductService : IProductService
                 });
             }
             
+            messagesForOpenAI.Add(new OpenAiMessage()
+            {
+                Role = MessageRoles.User.ToString().ToLower(),
+                Content = message.Text
+            });
+            
             chatRequest = new ChatCompletionRequest
             {
                 Messages = messagesForOpenAI,
