@@ -29,6 +29,8 @@ public class ProductService : IProductService
     
     public async IAsyncEnumerable<ServerSentEvent> SearchProductAsync(string wishlistId, MessageCreateDto message, CancellationToken cancellationToken)
     {
+        string firstMessageForUser = "What are you looking for?";
+        
         string promptForGpt =
             "You are a Shopping Assistant that helps people find product recommendations. Ask user additional questions if more context needed." +
             "\nYou must return data with one of the prefixes:" +
@@ -56,7 +58,7 @@ public class ProductService : IProductService
                     new OpenAiMessage()
                     {
                         Role = OpenAiRole.System.ToString().ToLower(),
-                        Content = "What are you looking for?"
+                        Content = firstMessageForUser
                     }
                 },
                 Stream = true
@@ -64,13 +66,13 @@ public class ProductService : IProductService
             
             _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageCreateDto()
             {
-                Text = "What are you looking for?",
+                Text = firstMessageForUser,
             }, cancellationToken);
             
             yield return new ServerSentEvent
             {
                 Event = SearchEventType.Message,
-                Data = "What are you looking for?"
+                Data = firstMessageForUser
             };
             
         }
@@ -177,6 +179,7 @@ public class ProductService : IProductService
                                 };
                                 productBuffer.Name = string.Empty;
                                 
+                                //a complete description of the entity when the Amazon API is connected
                                 await _wishlistsService.AddProductToPersonalWishlistAsync(wishlistId, new ProductCreateDto()
                                 {
                                     Url = "",
