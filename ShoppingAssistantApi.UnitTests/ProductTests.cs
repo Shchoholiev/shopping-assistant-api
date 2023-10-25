@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Bson;
 using Moq;
 using Newtonsoft.Json.Linq;
+using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Application.IServices;
 using ShoppingAssistantApi.Application.Models.CreateDtos;
 using ShoppingAssistantApi.Application.Models.Dtos;
@@ -21,13 +22,16 @@ public class ProductTests
 
     private IProductService _productService;
 
-    public Mock<IWishlistsService> _wishListServiceMock;
+    private Mock<IWishlistsService> _wishListServiceMock;
 
-    public ProductTests()
+    private IMessagesRepository _messagesRepository;
+
+    public ProductTests(IMessagesRepository messagesRepository)
     {
+        _messagesRepository = messagesRepository;
         _openAiServiceMock = new Mock<IOpenAiService>();
         _wishListServiceMock = new Mock<IWishlistsService>();
-        _productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object);
+        _productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object, _messagesRepository);
     }
     
     [Fact]
@@ -116,7 +120,7 @@ public class ProductTests
         var message = new MessageCreateDto { Text = "Your message text" };
         var cancellationToken = new CancellationToken();
 
-        var productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object);
+        var productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object, _messagesRepository);
 
         var expectedSseData = new List<string>
         {

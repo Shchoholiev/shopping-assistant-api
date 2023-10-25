@@ -107,6 +107,8 @@ public class DbInitializer
 
         var wishlistId1 = ObjectId.Parse("ab79cde6f69abcd3efab65cd");
         var wishlistId2 = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab");
+        var wishlistId3 = ObjectId.Parse("ab7c8c2d9edf39abcd1ef9ab");
+        var wishlistId4 = ObjectId.Parse("ab8c8c2d9edf39abcd1ef9ab");
 
         var wishlists = new Wishlist[]
         {
@@ -125,7 +127,23 @@ public class DbInitializer
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user2.Id,
                 CreatedDateUtc = DateTime.UtcNow
-            }
+            },
+            new Wishlist
+            {
+                Id = wishlistId3,
+                Name = "Test For Search",
+                Type = WishlistTypes.Product.ToString(),
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
+            new Wishlist
+            {
+                Id = wishlistId4,
+                Name = "Test For Answer",
+                Type = WishlistTypes.Product.ToString(),
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
         };
 
         await wishlistsCollection.InsertManyAsync(wishlists);
@@ -142,6 +160,8 @@ public class DbInitializer
 
         var wishlistId1 = ObjectId.Parse("ab79cde6f69abcd3efab65cd");
         var wishlistId2 = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab");
+        var wishlistId3 = ObjectId.Parse("ab7c8c2d9edf39abcd1ef9ab");
+        var wishlistId4 = ObjectId.Parse("ab8c8c2d9edf39abcd1ef9ab");
 
         var messages = new Message[]
         {
@@ -197,7 +217,28 @@ public class DbInitializer
                 WishlistId = wishlistId2,
                 CreatedById = user2.Id,
                 CreatedDateUtc = DateTime.UtcNow
-            }
+            },
+            new Message
+            {
+                Text = "You are a Shopping Assistant that helps people find product recommendations. Ask user additional questions if more context needed." +
+                       "\nYou must return data with one of the prefixes:" +
+                       "\n[Question] - return question" +
+                       "\n[Suggestions] - return semicolon separated suggestion how to answer to a question" +
+                       "\n[Message] - return text" +
+                       "\n[Products] - return semicolon separated product names",
+                Role = "system",
+                WishlistId = wishlistId4,
+                CreatedById = user2.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
+            new Message
+            {
+                Text = "What are you looking for?",
+                Role = "system",
+                WishlistId = wishlistId4,
+                CreatedById = user2.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
         };
 
         await messagesCollection.InsertManyAsync(messages);

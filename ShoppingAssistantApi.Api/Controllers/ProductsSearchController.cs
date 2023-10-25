@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using HotChocolate.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using ShoppingAssistantApi.Application.IServices;
 using ShoppingAssistantApi.Application.Models.CreateDtos;
 
 namespace ShoppingAssistantApi.Api.Controllers;
 
+[Authorize]
 public class ProductsSearchController : BaseController
 {
     private readonly IProductService _productService;

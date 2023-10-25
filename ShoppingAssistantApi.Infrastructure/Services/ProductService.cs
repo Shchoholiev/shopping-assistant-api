@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using MongoDB.Bson;
+using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Application.IServices;
 using ShoppingAssistantApi.Application.Models.CreateDtos;
 using ShoppingAssistantApi.Application.Models.Dtos;
@@ -15,22 +17,23 @@ public class ProductService : IProductService
     private readonly IWishlistsService _wishlistsService;
     
     private readonly IOpenAiService _openAiService;
-    
 
-    public ProductService(IOpenAiService openAiService, IWishlistsService wishlistsService)
+    private readonly IMessagesRepository _messagesRepository;
+
+    public ProductService(IOpenAiService openAiService, IWishlistsService wishlistsService, IMessagesRepository messagesRepository)
     {
         _openAiService = openAiService;
         _wishlistsService = wishlistsService;
+        _messagesRepository = messagesRepository;
     }
     
     public async IAsyncEnumerable<ServerSentEvent> SearchProductAsync(string wishlistId, MessageCreateDto message, CancellationToken cancellationToken)
     {
-        var isFirstMessage = _wishlistsService
-            .GetMessagesPageFromPersonalWishlistAsync(wishlistId, 1, 1, cancellationToken).Result;
+        var isFirstMessage = await _messagesRepository.GetCountAsync(message=>message.WishlistId==ObjectId.Parse((wishlistId)), cancellationToken);
 
         var chatRequest = new ChatCompletionRequest();
         
-        if (isFirstMessage==null)
+        if (isFirstMessage==0)
         {
             chatRequest = new ChatCompletionRequest
             {
@@ -38,7 +41,7 @@ public class ProductService : IProductService
                 {
                     new OpenAiMessage
                     {
-                        Role = OpenAiRole.System.ToString(),
+                        Role = OpenAiRole.System.ToString().ToLower(),
                         Content = "You are a Shopping Assistant that helps people find product recommendations. Ask user additional questions if more context needed." +
                                   "\nYou must return data with one of the prefixes:" +
                                   "\n[Question] - return question" +
@@ -49,7 +52,7 @@ public class ProductService : IProductService
                 
                     new OpenAiMessage()
                     {
-                        Role = OpenAiRole.Assistant.ToString(),
+                        Role = OpenAiRole.System.ToString().ToLower(),
                         Content = "What are you looking for?"
                     }
                 },
@@ -80,10 +83,10 @@ public class ProductService : IProductService
             };
         }
 
-        if(isFirstMessage!=null)
+        if(isFirstMessage!=0)
         {
             var previousMessages = _wishlistsService
-                .GetMessagesPageFromPersonalWishlistAsync(wishlistId, 1, 1, cancellationToken).Result.Items.ToList();
+                .GetMessagesPageFromPersonalWishlistAsync(wishlistId, 1, 50, cancellationToken).Result.Items.ToList();
 
             var messagesForOpenAI = new List<OpenAiMessage>();
             foreach (var item in previousMessages )
@@ -91,7 +94,7 @@ public class ProductService : IProductService
                 messagesForOpenAI.Add(
                     new OpenAiMessage()
                 {
-                    Role = item.Role,
+                    Role = item.Role.ToLower(),
                     Content = item.Text
                 });
             }
