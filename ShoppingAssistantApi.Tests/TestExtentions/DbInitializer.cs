@@ -220,13 +220,8 @@ public class DbInitializer
             },
             new Message
             {
-                Text = "You are a Shopping Assistant that helps people find product recommendations. Ask user additional questions if more context needed." +
-                       "\nYou must return data with one of the prefixes:" +
-                       "\n[Question] - return question" +
-                       "\n[Suggestions] - return semicolon separated suggestion how to answer to a question" +
-                       "\n[Message] - return text" +
-                       "\n[Products] - return semicolon separated product names",
-                Role = "system",
+                Text = "What are you looking for?",
+                Role = "assistant",
                 WishlistId = wishlistId4,
                 CreatedById = user2.Id,
                 CreatedDateUtc = DateTime.UtcNow
@@ -234,15 +229,7 @@ public class DbInitializer
             new Message
             {
                 Text = "What are you looking for?",
-                Role = "system",
-                WishlistId = wishlistId4,
-                CreatedById = user2.Id,
-                CreatedDateUtc = DateTime.UtcNow
-            },
-            new Message
-            {
-                Text = "What are you looking for?",
-                Role = "system",
+                Role = "assistant",
                 WishlistId = wishlistId3,
                 CreatedById = user2.Id,
                 CreatedDateUtc = DateTime.UtcNow

@@ -55,127 +55,110 @@ public class ProductService : IProductService
             }
         };
         
-        if (countOfMessage==1)
+        
+        var messagesForOpenAI = new List<OpenAiMessage>();
+        
+        foreach (var item in previousMessages.Items)
         {
-            yield return new ServerSentEvent
-            {
-                Event = SearchEventType.Message,
-                Data = previousMessages.Items.FirstOrDefault()?.Text
-            };
-        }
-
-        if(countOfMessage>1)
-        {
-            var messagesForOpenAI = new List<OpenAiMessage>();
-            messagesForOpenAI.Add(new OpenAiMessage()
-            {
-                Role = OpenAiRoleExtensions.RequestConvert(OpenAiRole.System),
-                Content = promptForGpt
-            });
-            
-            foreach (var item in previousMessages.Items)
-            {
-                messagesForOpenAI.Add(
-                    new OpenAiMessage()
+            messagesForOpenAI
+                .Add(new OpenAiMessage() 
                 {
                     Role = item.Role.ToLower(),
-                    Content = item.Text
+                    Content = item.Text 
                 });
+        }
+            
+        messagesForOpenAI.Add(new OpenAiMessage()
+        {
+            Role = OpenAiRoleExtensions.RequestConvert(OpenAiRole.User),
+            Content = message.Text
+        });
+            
+        chatRequest.Messages.AddRange(messagesForOpenAI);
+            
+        var suggestionBuffer = new Suggestion();
+        var messageBuffer = new MessagePart();
+        var productBuffer = new ProductName();
+        var currentDataType = SearchEventType.Wishlist;
+        var dataTypeHolder = string.Empty;
+
+        await foreach (var data in _openAiService.GetChatCompletionStream(chatRequest, cancellationToken))
+        {
+            if (data.Contains("["))
+            {
+                if (dataTypeHolder=="[Message]" && messageBuffer.Text!=null)
+                {
+                    _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageCreateDto()
+                    {
+                        Text = messageBuffer.Text,
+                    }, cancellationToken);
+                }
+                dataTypeHolder = string.Empty;
+                dataTypeHolder += data;
             }
-            
-            messagesForOpenAI.Add(new OpenAiMessage()
-            {
-                Role = OpenAiRoleExtensions.RequestConvert(OpenAiRole.User),
-                Content = message.Text
-            });
-            
-            chatRequest.Messages.AddRange(messagesForOpenAI);
-            
-            var suggestionBuffer = new Suggestion();
-            var messageBuffer = new MessagePart();
-            var productBuffer = new ProductName();
-            var currentDataType = SearchEventType.Wishlist;
-            var dataTypeHolder = string.Empty;
 
-            await foreach (var data in _openAiService.GetChatCompletionStream(chatRequest, cancellationToken))
+            else if (data.Contains("]"))
             {
-                if (data.Contains("["))
+                dataTypeHolder += data;
+                currentDataType = DetermineDataType(dataTypeHolder);
+            }
+
+            else if (dataTypeHolder=="[" && !data.Contains("["))
+            {
+                dataTypeHolder += data;
+            }
+
+            else
+            {
+                switch (currentDataType)
                 {
-                    if (dataTypeHolder=="[Message]" && messageBuffer.Text!=null)
-                    {
-                        _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageCreateDto()
+                    case SearchEventType.Message:
+                        yield return new ServerSentEvent
                         {
-                            Text = messageBuffer.Text,
-                        }, cancellationToken);
-                    }
-                    dataTypeHolder = string.Empty;
-                    dataTypeHolder += data;
-                }
+                            Event = SearchEventType.Message,
+                            Data = data
+                        };
+                        messageBuffer.Text += data;
+                        break;
 
-                else if (data.Contains("]"))
-                {
-                    dataTypeHolder += data;
-                    currentDataType = DetermineDataType(dataTypeHolder);
-                }
-
-                else if (dataTypeHolder=="[" && !data.Contains("["))
-                {
-                    dataTypeHolder += data;
-                }
-
-                else
-                {
-                    switch (currentDataType)
-                    {
-                        case SearchEventType.Message:
+                    case SearchEventType.Suggestion:
+                        if (data.Contains(";"))
+                        {
                             yield return new ServerSentEvent
                             {
-                                Event = SearchEventType.Message,
-                                Data = data
+                                Event = SearchEventType.Suggestion,
+                                Data = suggestionBuffer.Text
                             };
-                            messageBuffer.Text += data;
+                            suggestionBuffer.Text = string.Empty;
                             break;
-
-                        case SearchEventType.Suggestion:
-                            if (data.Contains(";"))
-                            {
-                                yield return new ServerSentEvent
-                                {
-                                    Event = SearchEventType.Suggestion,
-                                    Data = suggestionBuffer.Text
-                                };
-                                suggestionBuffer.Text = string.Empty;
-                                break;
-                            } 
-                            suggestionBuffer.Text += data;
-                            break;
+                        } 
+                        suggestionBuffer.Text += data;
+                        break;
                         
-                        case SearchEventType.Product:
-                            if (data.Contains(";"))
+                    case SearchEventType.Product:
+                        if (data.Contains(";"))
+                        {
+                            yield return new ServerSentEvent
                             {
-                                yield return new ServerSentEvent
-                                {
-                                    Event = SearchEventType.Product,
-                                    Data = productBuffer.Name
-                                };
-                                productBuffer.Name = string.Empty;
+                                Event = SearchEventType.Product,
+                                Data = productBuffer.Name
+                            };
+                            productBuffer.Name = string.Empty;
                                 
-                                //a complete description of the entity when the Amazon API is connected
-                                await _wishlistsService.AddProductToPersonalWishlistAsync(wishlistId, new ProductCreateDto()
-                                {
-                                    Url = "",
-                                    Name = productBuffer.Name,
-                                    Rating = 0,
-                                    Description = "",
-                                    ImagesUrls = new []{"", ""},
-                                    WasOpened = false
-                                }, cancellationToken);
-                                
-                                break;
-                            }
-                            productBuffer.Name += data;
-                            break;  
-                    }
+                            //a complete description of the entity when the Amazon API is connected
+                            await _wishlistsService.AddProductToPersonalWishlistAsync(wishlistId, new ProductCreateDto()
+                            {
+                                Url = "",
+                                Name = productBuffer.Name,
+                                Rating = 0,
+                                Description = "",
+                                ImagesUrls = new []{"", ""},
+                                WasOpened = false
+                            }, cancellationToken);
+                            break;
+                        }
+                        productBuffer.Name += data;
+                        break;  
                 }
             }
         }

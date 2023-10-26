@@ -57,7 +57,7 @@ public class ProductsTests : TestsBase
                 if (eventName == "event: Message")
                 {
                     foundMessageEvent = true;
-                    Assert.Equal("\"What are you looking for?\"", eventData);
+                    Assert.NotNull(eventData);
                     break;
                 }
             }

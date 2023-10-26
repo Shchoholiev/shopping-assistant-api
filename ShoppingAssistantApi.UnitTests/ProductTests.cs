@@ -49,7 +49,8 @@ public class ProductTests
             " 3070TI", " ;", " GTX", " 4070TI", " ;", " ?"
         };
         
-        var expectedMessages = new List<string> { "What are you looking for?" };
+        var expectedMessages = new List<string> { " What", " u", " want", " ?" };
+        var expectedSuggestion = new List<string> { " USB-C", " Keyboard ultra", " USB-C" };
 
         // Mock the GetChatCompletionStream method to provide the expected SSE data
         _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
@@ -63,10 +64,10 @@ public class ProductTests
         
         _wishListServiceMock
             .Setup(m => m.GetMessagesPageFromPersonalWishlistAsync(
-                    It.IsAny<string>(), // Очікуваний параметр wishlistId
-                    It.IsAny<int>(), // Очікуваний параметр pageNumber
-                    It.IsAny<int>(), // Очікуваний параметр pageSize
-                    It.IsAny<CancellationToken>()) // Очікуваний параметр cancellationToken
+                    It.IsAny<string>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()) 
             )
             .ReturnsAsync(new PagedList<MessageDto>(
                 new List<MessageDto>
@@ -78,7 +79,6 @@ public class ProductTests
                         CreatedById = "User2",
                         Role = "User"
                     },
-
                 },
                 1,
                 1,
@@ -105,6 +105,7 @@ public class ProductTests
         // Check if the actual SSE events match the expected SSE events
         Assert.NotNull(actualSseEvents);
         Assert.Equal(expectedMessages, receivedMessages);
+        Assert.Equal(expectedSuggestion, receivedSuggestions);
     }
 
 
