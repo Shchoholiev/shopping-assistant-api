@@ -190,25 +190,6 @@ public class DbInitialaizer
                 Name = "Gaming PC",
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user1.Id,
-                Messages = new Message[]
-                {
-                    new Message
-                    {
-                        Text = "Prompt",
-                        Role = MessageRoles.User.ToString(),
-                        WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
-                        CreatedById = user1.Id,
-                        CreatedDateUtc = DateTime.UtcNow
-                    },
-                    new Message
-                    {
-                        Text = "Answer",
-                        Role = MessageRoles.Application.ToString(),
-                        WishlistId = ObjectId.Parse("ab79cde6f69abcd3efab65cd"),
-                        CreatedById = user1.Id,
-                        CreatedDateUtc = DateTime.UtcNow
-                    },
-                }
             },
             new Wishlist
             {
@@ -216,17 +197,6 @@ public class DbInitialaizer
                 Name = "Generic Wishlist Name",
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user2.Id,
-                Messages = new Message[]
-                {
-                    new Message
-                    {
-                        Text = "Prompt",
-                        Role = MessageRoles.User.ToString(),
-                        WishlistId = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab"),
-                        CreatedById = user1.Id,
-                        CreatedDateUtc = DateTime.UtcNow
-                    }
-                }
             }
         };
 
