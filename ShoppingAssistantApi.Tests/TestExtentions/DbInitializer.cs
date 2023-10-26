@@ -239,6 +239,14 @@ public class DbInitializer
                 CreatedById = user2.Id,
                 CreatedDateUtc = DateTime.UtcNow
             },
+            new Message
+            {
+                Text = "What are you looking for?",
+                Role = "system",
+                WishlistId = wishlistId3,
+                CreatedById = user2.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
         };
 
         await messagesCollection.InsertManyAsync(messages);

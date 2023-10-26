@@ -29,8 +29,6 @@ public class ProductService : IProductService
     
     public async IAsyncEnumerable<ServerSentEvent> SearchProductAsync(string wishlistId, MessageCreateDto message, CancellationToken cancellationToken)
     {
-        string firstMessageForUser = "What are you looking for?";
-        
         string promptForGpt =
             "You are a Shopping Assistant that helps people find product recommendations. Ask user additional questions if more context needed." +
             "\nYou must return data with one of the prefixes:" +
@@ -39,56 +37,43 @@ public class ProductService : IProductService
             "\n[Message] - return text" +
             "\n[Products] - return semicolon separated product names";
         
-        var isFirstMessage = await _messagesRepository.GetCountAsync(message=>message.WishlistId==ObjectId.Parse((wishlistId)), cancellationToken);
+        var countOfMessage = await _messagesRepository
+            .GetCountAsync(message=>message.WishlistId==ObjectId.Parse((wishlistId)), cancellationToken);
 
-        var chatRequest = new ChatCompletionRequest();
-        
-        if (isFirstMessage==0)
+        var previousMessages = await _wishlistsService
+            .GetMessagesPageFromPersonalWishlistAsync(wishlistId, 1, countOfMessage, cancellationToken);
+
+        var chatRequest = new ChatCompletionRequest
         {
-            chatRequest = new ChatCompletionRequest
+            Messages = new List<OpenAiMessage>
             {
-                Messages = new List<OpenAiMessage>
+                new OpenAiMessage
                 {
-                    new OpenAiMessage
-                    {
-                        Role = OpenAiRole.System.ToString().ToLower(),
-                        Content = promptForGpt
-                    },
-                
-                    new OpenAiMessage()
-                    {
-                        Role = OpenAiRole.System.ToString().ToLower(),
-                        Content = firstMessageForUser
-                    }
-                },
-                Stream = true
-            };
-            
-            _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageCreateDto()
-            {
-                Text = firstMessageForUser,
-            }, cancellationToken);
-            
+                    Role = OpenAiRoleExtensions.RequestConvert(OpenAiRole.System),
+                    Content = promptForGpt
+                }
+            }
+        };
+        
+        if (countOfMessage==1)
+        {
             yield return new ServerSentEvent
             {
                 Event = SearchEventType.Message,
-                Data = firstMessageForUser
+                Data = previousMessages.Items.FirstOrDefault()?.Text
             };
-            
         }
 
-        if(isFirstMessage!=0)
+        if(countOfMessage>1)
         {
-            var previousMessages = _wishlistsService
-                .GetMessagesPageFromPersonalWishlistAsync(wishlistId, 1, 50, cancellationToken).Result.Items.ToList();
-
             var messagesForOpenAI = new List<OpenAiMessage>();
             messagesForOpenAI.Add(new OpenAiMessage()
             {
-                Role = OpenAiRole.System.ToString().ToLower(),
+                Role = OpenAiRoleExtensions.RequestConvert(OpenAiRole.System),
                 Content = promptForGpt
             });
-            foreach (var item in previousMessages )
+            
+            foreach (var item in previousMessages.Items)
             {
                 messagesForOpenAI.Add(
                     new OpenAiMessage()
@@ -100,15 +85,11 @@ public class ProductService : IProductService
             
             messagesForOpenAI.Add(new OpenAiMessage()
             {
-                Role = MessageRoles.User.ToString().ToLower(),
+                Role = OpenAiRoleExtensions.RequestConvert(OpenAiRole.User),
                 Content = message.Text
             });
             
-            chatRequest = new ChatCompletionRequest
-            {
-                Messages = messagesForOpenAI,
-                Stream = true
-            };
+            chatRequest.Messages.AddRange(messagesForOpenAI);
             
             var suggestionBuffer = new Suggestion();
             var messageBuffer = new MessagePart();

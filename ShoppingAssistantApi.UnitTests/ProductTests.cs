@@ -56,10 +56,34 @@ public class ProductTests
             .Returns(expectedSseData.ToAsyncEnumerable());
         
         _messagesRepositoryMock.Setup(m => m.GetCountAsync(It.IsAny<Expression<Func<Message, bool>>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(0);
+            .ReturnsAsync(1);
         
         _wishListServiceMock.Setup(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageCreateDto>(), cancellationToken))
             .Verifiable();
+        
+        _wishListServiceMock
+            .Setup(m => m.GetMessagesPageFromPersonalWishlistAsync(
+                    It.IsAny<string>(), // Очікуваний параметр wishlistId
+                    It.IsAny<int>(), // Очікуваний параметр pageNumber
+                    It.IsAny<int>(), // Очікуваний параметр pageSize
+                    It.IsAny<CancellationToken>()) // Очікуваний параметр cancellationToken
+            )
+            .ReturnsAsync(new PagedList<MessageDto>(
+                new List<MessageDto>
+                {
+                    new MessageDto
+                    {
+                        Text = "What are you looking for?",
+                        Id = "3",
+                        CreatedById = "User2",
+                        Role = "User"
+                    },
+
+                },
+                1,
+                1,
+                1
+            ));
         
         // Act
         var resultStream = _productService.SearchProductAsync(wishlistId, message, cancellationToken);
@@ -81,7 +105,6 @@ public class ProductTests
         // Check if the actual SSE events match the expected SSE events
         Assert.NotNull(actualSseEvents);
         Assert.Equal(expectedMessages, receivedMessages);
-        _wishListServiceMock.Verify(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageCreateDto>(), cancellationToken), Times.Once);
     }
 
 
