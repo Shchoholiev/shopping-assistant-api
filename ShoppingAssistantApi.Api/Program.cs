@@ -6,6 +6,8 @@ using ShoppingAssistantApi.Api.ApiExtentions;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+var appConfig = Environment.GetEnvironmentVariable("APP_CONFIG") ?? builder.Configuration.GetConnectionString("AppConfig");
+builder.Configuration.AddAzureAppConfiguration(appConfig);
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddJWTTokenAuthentication(builder.Configuration);
