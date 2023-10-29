@@ -22,8 +22,11 @@ jobs:
       - name: Build with dotnet
         run: dotnet build --configuration Release
 
-      - name: Test with dotnet
-        run: dotnet test --no-build --verbosity normal
+      - name: Integration Tests
+        run: dotnet test ShoppingAssistantApi.Tests --configuration Debug --verbosity normal
+
+      - name: Unit Tests
+        run: dotnet test ShoppingAssistantApi.UnitTests --configuration Debug --verbosity normal
 
       - name: dotnet publish
         run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
