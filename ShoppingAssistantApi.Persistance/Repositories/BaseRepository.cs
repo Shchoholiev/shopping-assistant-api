@@ -21,7 +21,7 @@ public abstract class BaseRepository<TEntity> : IBaseRepository<TEntity> where T
 
     public async Task<TEntity> GetOneAsync(ObjectId id, CancellationToken cancellationToken)
     {
-        return await this._collection.Find(x => x.Id == id).FirstOrDefaultAsync(cancellationToken);
+        return await this._collection.Find(x => x.Id == id && x.IsDeleted == false).FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<TEntity> GetOneAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken)

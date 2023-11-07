@@ -14,7 +14,7 @@ public class UsersRepository : BaseRepository<User>, IUsersRepository
 
     public async Task<User> GetUserAsync(ObjectId id, CancellationToken cancellationToken)
     {
-        return await (await this._collection.FindAsync(x => x.Id == id)).FirstOrDefaultAsync(cancellationToken);
+        return await (await this._collection.FindAsync(x => x.Id == id && x.IsDeleted == false)).FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<User> GetUserAsync(Expression<Func<User, bool>> predicate, CancellationToken cancellationToken)

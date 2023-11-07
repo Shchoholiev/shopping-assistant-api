@@ -54,8 +54,8 @@ public class UserManager : ServiceBase, IUserManager
         _logger.LogInformation($"Logging in user with email: {login.Email} and phone: {login.Phone}.");
 
         var user = string.IsNullOrEmpty(login.Phone)
-            ? await this._usersRepository.GetUserAsync(u => u.Email == login.Email, cancellationToken)
-            : await this._usersRepository.GetUserAsync(u => u.Phone == login.Phone, cancellationToken);
+            ? await this._usersRepository.GetUserAsync(u => u.Email == login.Email && u.IsDeleted == false, cancellationToken)
+            : await this._usersRepository.GetUserAsync(u => u.Phone == login.Phone && u.IsDeleted == false, cancellationToken);
         if (user == null)
         {
             throw new EntityNotFoundException<User>();
@@ -79,11 +79,11 @@ public class UserManager : ServiceBase, IUserManager
     {
         _logger.LogInformation($"Logging in / Registering guest with guest id: {guest.GuestId}.");
 
-        var user = await this._usersRepository.GetUserAsync(x => x.GuestId == guest.GuestId, cancellationToken);
+        var user = await this._usersRepository.GetUserAsync(x => x.GuestId == guest.GuestId && x.IsDeleted == false, cancellationToken);
 
         if (user == null)
         {
-            var role = await this._rolesRepository.GetRoleAsync(r => r.Name == "Guest", cancellationToken);
+            var role = await this._rolesRepository.GetRoleAsync(r => r.Name == "Guest" && r.IsDeleted == false, cancellationToken);
             user = new User
             {
                 GuestId = guest.GuestId,
@@ -148,7 +148,7 @@ public class UserManager : ServiceBase, IUserManager
     {
         _logger.LogInformation($"Adding Role: {roleName} to User with Id: {userId}.");
 
-        var role = await this._rolesRepository.GetRoleAsync(r => r.Name == roleName, cancellationToken);
+        var role = await this._rolesRepository.GetRoleAsync(r => r.Name == roleName && r.IsDeleted == false, cancellationToken);
         if (role == null)
         {
             throw new EntityNotFoundException<Role>();
@@ -174,7 +174,7 @@ public class UserManager : ServiceBase, IUserManager
     {
         _logger.LogInformation($"Removing Role: {roleName} from User with Id: {userId}.");
 
-        var role = await this._rolesRepository.GetRoleAsync(r => r.Name == roleName, cancellationToken);
+        var role = await this._rolesRepository.GetRoleAsync(r => r.Name == roleName && r.IsDeleted == false, cancellationToken);
         if (role == null)
         {
             throw new EntityNotFoundException<Role>();
@@ -202,7 +202,7 @@ public class UserManager : ServiceBase, IUserManager
     {
         _logger.LogInformation($"Updating user with id: {GlobalUser.Id}.");
 
-        var user = await this._usersRepository.GetUserAsync(x => x.Id == GlobalUser.Id, cancellationToken);
+        var user = await this._usersRepository.GetUserAsync(x => x.Id == GlobalUser.Id && x.IsDeleted == false, cancellationToken);
         if (user == null)
         {
             throw new EntityNotFoundException<User>();
@@ -310,11 +310,11 @@ public class UserManager : ServiceBase, IUserManager
 
     private async Task CheckAndUpgradeToUserAsync(User user, CancellationToken cancellationToken)
     {
-        if (user.Roles.Any(x => x.Name == "Guest") && !user.Roles.Any(x => x.Name == "User"))
+        if (user.Roles.Any(x => x.Name == "Guest" && x.IsDeleted == false) && !user.Roles.Any(x => x.Name == "User" && x.IsDeleted == false))
         {
             if (!string.IsNullOrEmpty(user.PasswordHash) && (!string.IsNullOrEmpty(user.Email) || !string.IsNullOrEmpty(user.Phone)))
             {
-                var role = await this._rolesRepository.GetRoleAsync(x => x.Name == "User", cancellationToken);
+                var role = await this._rolesRepository.GetRoleAsync(x => x.Name == "User" && x.IsDeleted == false, cancellationToken);
                 user.Roles.Add(role);
             }
         }
@@ -326,7 +326,7 @@ public class UserManager : ServiceBase, IUserManager
         {
             ValidateEmail(userDto.Email);
             if (userDto.Email != user.Email 
-                && await this._usersRepository.ExistsAsync(x => x.Email == userDto.Email, cancellationToken))
+                && await this._usersRepository.ExistsAsync(x => x.Email == userDto.Email && x.IsDeleted == false, cancellationToken))
             {
                 throw new EntityAlreadyExistsException<User>("email", userDto.Email);
             }
@@ -336,7 +336,7 @@ public class UserManager : ServiceBase, IUserManager
         {
             ValidatePhone(userDto.Phone);
             if (userDto.Phone != user.Phone 
-                && await this._usersRepository.ExistsAsync(x => x.Phone == userDto.Phone, cancellationToken))
+                && await this._usersRepository.ExistsAsync(x => x.Phone == userDto.Phone && x.IsDeleted == false, cancellationToken))
             {
                 throw new EntityAlreadyExistsException<User>("phone", userDto.Phone);
             }

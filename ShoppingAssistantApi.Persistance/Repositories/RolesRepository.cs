@@ -13,7 +13,7 @@ public class RolesRepository : BaseRepository<Role>, IRolesRepository
 
     public async Task<Role> GetRoleAsync(ObjectId id, CancellationToken cancellationToken)
     {
-        return await (await this._collection.FindAsync(x => x.Id == id)).FirstOrDefaultAsync(cancellationToken);
+        return await (await this._collection.FindAsync(x => x.Id == id && x.IsDeleted == false)).FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<Role> GetRoleAsync(Expression<Func<Role, bool>> predicate, CancellationToken cancellationToken)
