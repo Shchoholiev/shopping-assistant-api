@@ -12,6 +12,8 @@ public class ProductDto
 
     public required double Rating { get; set; }
 
+    public required double Price { get; set; }
+    
     public required string[] ImagesUrls { get; set; }
 
     public required bool WasOpened { get; set; }
