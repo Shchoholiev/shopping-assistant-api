@@ -212,6 +212,7 @@ public class DbInitialaizer
                 Name = "Thermaltake Glacier 360 Liquid-Cooled PC",
                 Description = "Cool PC for any task!",
                 Rating = 4.3,
+                Price = 855,
                 Url = "https://www.amazon.com/Thermaltake-Liquid-Cooled-ToughRAM-Computer-S3WT-B550-G36-LCS/dp" +
                       "/B09FYNM2GW/ref=sr_1_1?crid=391KAS4JFJSFF&keywords=gaming%2Bpc&qid=1697132083&sprefix=gaming%2Bpc%2Caps%2C209&sr=8-1&th=1",
                 ImagesUrls = new string[]
@@ -229,6 +230,7 @@ public class DbInitialaizer
                 Name = "Apple MagSafe Battery Pack",
                 Description = "Portable Charger with Fast Charging Capability, Power Bank Compatible with iPhone",
                 Rating = 4.3,
+                Price = 35.99,
                 Url = "https://www.amazon.com/Apple-MJWY3AM-A-MagSafe-Battery/dp/" +
                       "B099BWY7WT/ref=sr_1_1?keywords=apple+power+bank&qid=1697375350&sr=8-1",
                 ImagesUrls = new string[]
@@ -247,6 +249,7 @@ public class DbInitialaizer
                 Name = "Logitech K400 Plus Wireless Touch With Easy Media Control and Built-in Touchpad",
                 Description = "Reliable membrane keyboard with touchpad!",
                 Rating = 4.5,
+                Price = 99,
                 Url = "https://www.amazon.com/Logitech-Wireless-Keyboard-Touchpad-PC-connected/dp/B014EUQOGK/" +
                       "ref=sr_1_11?crid=BU2PHZKHKD65&keywords=keyboard+wireless&qid=1697375559&sprefix=keyboard+wir%2Caps%2C195&sr=8-11",
                 ImagesUrls = new string[]
@@ -266,6 +269,7 @@ public class DbInitialaizer
                 Description = "Cross computer control: Game changing capacity to navigate seamlessly on three computers," +
                               " and copy paste text, images, and files from one to the other using Logitech Flow",
                 Rating = 4.6,
+                Price = 50.99,
                 Url = "https://www.amazon.com/Logitech-Hyper-Fast-Scrolling-Rechargeable-Computers/dp/B08P2JFPQC/ref=sr_1_8?" +
                       "crid=2BL6Z14W2TPP3&keywords=mouse%2Bwireless&qid=1697375784&sprefix=mousewireless%2Caps%2C197&sr=8-8&th=1",
                 ImagesUrls = new string[]

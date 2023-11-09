@@ -257,6 +257,7 @@ public class DbInitializer
                 Name = "AMD Ryzen 5 5600G 6-Core 12-Thread Unlocked Desktop Processor with Radeon Graphics",
                 Description = "Features best-in-class graphics performance in a desktop processor for smooth 1080p gaming, no graphics card required",
                 Rating = 4.8,
+                Price = 120,
                 Url = "https://a.co/d/5ceuIrq",
                 ImagesUrls = new string[]
                 {
@@ -273,6 +274,7 @@ public class DbInitializer
                 Name = "Samsung 970 EVO Plus SSD 2TB NVMe M.2 Internal Solid State Hard Drive, V-NAND Technology, Storage and Memory Expansion for Gaming, Graphics w/ Heat Control, Max Speed, MZ-V7S2T0B/AM ",
                 Description = "7 Year Limited Warranty: The 970 EVO Plus provides up to 1200 TBW (Terabytes Written) with 5-years of protection for exceptional endurance powered by the latest V-NAND technology and Samsung's reputation for quality ",
                 Rating = 4.8,
+                Price = 153,
                 Url = "https://a.co/d/gxnuqs1",
                 ImagesUrls = new string[]
                 {
