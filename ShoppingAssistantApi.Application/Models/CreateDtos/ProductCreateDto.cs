@@ -9,6 +9,8 @@ public class ProductCreateDto
     public required string Description { get; set; }
 
     public required double Rating { get; set; }
+    
+    public required double Price { get; set; }
 
     public required string[] ImagesUrls { get; set; }
 

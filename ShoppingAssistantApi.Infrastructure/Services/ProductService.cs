@@ -152,6 +152,7 @@ public class ProductService : IProductService
                                 Name = productBuffer.Name,
                                 Rating = 0,
                                 Description = "",
+                                Price = 0,
                                 ImagesUrls = new []{"", ""},
                                 WasOpened = false
                             }, cancellationToken);
