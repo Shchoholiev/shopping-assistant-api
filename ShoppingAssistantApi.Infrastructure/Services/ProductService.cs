@@ -178,11 +178,14 @@ public class ProductService : IProductService
                 }
             }
         }
-        _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageCreateDto()
+        if (currentDataType == SearchEventType.Message)
         {
-            Text = messageBuffer.Text,
-        }, cancellationToken);
-        mqchecker = false;
+            _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageCreateDto()
+            {
+                Text = messageBuffer.Text,
+            }, cancellationToken);
+            mqchecker = false;
+        }
     }
 
     private SearchEventType DetermineDataType(string dataTypeHolder)
