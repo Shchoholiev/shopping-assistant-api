@@ -46,10 +46,10 @@ public class ProductTests
         {
             "[", "Message", "]", " What", " u", " want", " ?", "[", "Options", "]", " USB-C", " ;", " Keyboard", " ultra", 
             " ;", "[", "Options", "]", " USB", "-C", " ;", "[", "Products", "]", " GTX", " 3090", " ;", " GTX",
-            " 3070TI", " ;", " GTX", " 4070TI", " ;", " ?"
+            " 3070TI", " ;", " GTX", " 4070TI", " ;", " ?", "[", "Message", "]", " What", " u", " want", " ?"
         };
         
-        var expectedMessages = new List<string> { " What", " u", " want", " ?" };
+        var expectedMessages = new List<string> { " What", " u", " want", " ?", " What", " u", " want", " ?" };
         var expectedSuggestion = new List<string> { " USB-C", " Keyboard ultra", " USB-C" };
 
         // Mock the GetChatCompletionStream method to provide the expected SSE data
