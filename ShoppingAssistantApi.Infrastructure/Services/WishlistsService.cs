@@ -74,7 +74,7 @@ public class WishlistsService : IWishlistsService
         var wishlist = await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
 
         var firstUserMessage = 
-            (await _messagesRepository.GetPageAsync(1, 1, x => x.WishlistId == wishlistObjectId && x.Role == MessageRoles.User.ToString() && x.IsDeleted == false, cancellationToken)).First();
+            (await _messagesRepository.GetPageAsync(1, 1, x => x.WishlistId == wishlistObjectId && x.Role == MessageRoles.User.ToString(), cancellationToken)).First();
 
         var chatCompletionRequest = new ChatCompletionRequest
         {
@@ -124,7 +124,7 @@ public class WishlistsService : IWishlistsService
 
     public async Task<PagedList<WishlistDto>> GetPersonalWishlistsPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken)
     {
-        var entities = await _wishlistsRepository.GetPageAsync(pageNumber, pageSize, x => x.CreatedById == GlobalUser.Id && x.IsDeleted == false, cancellationToken);
+        var entities = await _wishlistsRepository.GetPageAsync(pageNumber, pageSize, x => x.CreatedById == GlobalUser.Id, cancellationToken);
         var dtos = _mapper.Map<List<WishlistDto>>(entities);
         var count = await _wishlistsRepository.GetTotalCountAsync();
         return new PagedList<WishlistDto>(dtos, pageNumber, pageSize, count);
@@ -151,10 +151,10 @@ public class WishlistsService : IWishlistsService
 
         await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
 
-        var entities = await _messagesRepository.GetPageStartingFromEndAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId && x.IsDeleted == false, cancellationToken);
+        var entities = await _messagesRepository.GetPageStartingFromEndAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId, cancellationToken);
 
         var dtos = _mapper.Map<List<MessageDto>>(entities);
-        var count = await _messagesRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId && x.IsDeleted == false, cancellationToken);
+        var count = await _messagesRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId, cancellationToken);
         return new PagedList<MessageDto>(dtos, pageNumber, pageSize, count);
     }
 
@@ -187,10 +187,10 @@ public class WishlistsService : IWishlistsService
 
         await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
 
-        var entities = await _productsRepository.GetPageAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId && x.IsDeleted == false, cancellationToken);
+        var entities = await _productsRepository.GetPageAsync(pageNumber, pageSize, x => x.WishlistId == wishlistObjectId, cancellationToken);
 
         var dtos = _mapper.Map<List<ProductDto>>(entities);
-        var count = await _productsRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId && x.IsDeleted == false, cancellationToken);
+        var count = await _productsRepository.GetCountAsync(x => x.WishlistId == wishlistObjectId, cancellationToken);
         return new PagedList<ProductDto>(dtos, pageNumber, pageSize, count);
     }
 
@@ -213,7 +213,7 @@ public class WishlistsService : IWishlistsService
 
     private async Task<Wishlist> TryGetPersonalWishlist(ObjectId wishlistId, CancellationToken cancellationToken)
     {
-        var entity = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistId && x.IsDeleted == false, cancellationToken);
+        var entity = await _wishlistsRepository.GetWishlistAsync(x => x.Id == wishlistId, cancellationToken);
 
         if (entity.CreatedById != GlobalUser.Id)
         {

@@ -13,13 +13,13 @@ public class WishlistsRepository : BaseRepository<Wishlist>, IWishlistsRepositor
 
     public async Task<Wishlist> GetWishlistAsync(Expression<Func<Wishlist, bool>> predicate, CancellationToken cancellationToken)
     {
-        return await (await _collection.FindAsync(predicate)).FirstOrDefaultAsync(cancellationToken);
+        return await (await _collection.FindAsync(Builders<Wishlist>.Filter.Where(predicate) & Builders<Wishlist>.Filter.Where(x => !x.IsDeleted))).FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<Wishlist> UpdateWishlistNameAsync(ObjectId wishlistId, string newName,
             ObjectId updatedById, CancellationToken cancellationToken)
     {
-        var filterDefinition = Builders<Wishlist>.Filter.Eq(w => w.Id, wishlistId);
+        var filterDefinition = Builders<Wishlist>.Filter.Eq(w => w.Id, wishlistId) & Builders<Wishlist>.Filter.Where(x => !x.IsDeleted);
 
         var updateDefinition = Builders<Wishlist>.Update
             .Set(w => w.Name, newName)

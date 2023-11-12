@@ -18,6 +18,6 @@ public class RolesRepository : BaseRepository<Role>, IRolesRepository
 
     public async Task<Role> GetRoleAsync(Expression<Func<Role, bool>> predicate, CancellationToken cancellationToken)
     {
-        return await (await this._collection.FindAsync(predicate)).FirstOrDefaultAsync(cancellationToken);
+        return await (await this._collection.FindAsync(Builders<Role>.Filter.Where(predicate) & Builders<Role>.Filter.Where(x => !x.IsDeleted))).FirstOrDefaultAsync(cancellationToken);
     }
 }

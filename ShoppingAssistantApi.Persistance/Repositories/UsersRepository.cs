@@ -19,7 +19,7 @@ public class UsersRepository : BaseRepository<User>, IUsersRepository
 
     public async Task<User> GetUserAsync(Expression<Func<User, bool>> predicate, CancellationToken cancellationToken)
     {
-        return await (await this._collection.FindAsync(predicate)).FirstOrDefaultAsync(cancellationToken);
+        return await (await this._collection.FindAsync(Builders<User>.Filter.Where(predicate) & Builders<User>.Filter.Where(x => !x.IsDeleted))).FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<User> UpdateUserAsync(User user, CancellationToken cancellationToken)
@@ -39,6 +39,6 @@ public class UsersRepository : BaseRepository<User>, IUsersRepository
         };
 
         return await this._collection.FindOneAndUpdateAsync(
-            Builders<User>.Filter.Eq(u => u.Id, user.Id), updateDefinition, options, cancellationToken);
+            Builders<User>.Filter.Eq(u => u.Id, user.Id) & Builders<User>.Filter.Where(x => !x.IsDeleted), updateDefinition, options, cancellationToken);
     }
 }

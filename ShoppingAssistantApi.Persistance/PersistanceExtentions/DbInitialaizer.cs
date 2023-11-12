@@ -41,9 +41,9 @@ public class DbInitialaizer
 
     public async Task AddUsers(CancellationToken cancellationToken)
     {
-        var userRole = await (await _roleCollection.FindAsync(x => x.Name.Equals("User") && x.IsDeleted == false)).FirstAsync();
-        var guestRole = await (await _roleCollection.FindAsync(x => x.Name.Equals("Guest") && x.IsDeleted == false)).FirstAsync();
-        var adminRole = await (await _roleCollection.FindAsync(x => x.Name.Equals("Admin") && x.IsDeleted == false)).FirstAsync();
+        var userRole = await (await _roleCollection.FindAsync(x => x.Name.Equals("User"))).FirstAsync();
+        var guestRole = await (await _roleCollection.FindAsync(x => x.Name.Equals("Guest"))).FirstAsync();
+        var adminRole = await (await _roleCollection.FindAsync(x => x.Name.Equals("Admin"))).FirstAsync();
 
         var users = new User[]
         {
@@ -179,8 +179,8 @@ public class DbInitialaizer
 
     public async Task AddWishlistsWithMessages(CancellationToken cancellationToken)
     {
-        var user1 = await (await _userCollection.FindAsync(x => x.Email.Equals("shopping.assistant.team@gmail.com") && x.IsDeleted == false)).FirstAsync();
-        var user2 = await (await _userCollection.FindAsync(x => x.Email.Equals("mykhailo.bilodid@nure.ua") && x.IsDeleted == false)).FirstAsync();
+        var user1 = await (await _userCollection.FindAsync(x => x.Email.Equals("shopping.assistant.team@gmail.com"))).FirstAsync();
+        var user2 = await (await _userCollection.FindAsync(x => x.Email.Equals("mykhailo.bilodid@nure.ua"))).FirstAsync();
 
         var wishlists = new Wishlist[]
         {

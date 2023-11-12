@@ -24,7 +24,7 @@ public class RolesService : IRolesService
 
     public async Task<RoleDto> AddRoleAsync(RoleCreateDto dto, CancellationToken cancellationToken)
     {
-        var role = await this._repository.GetRoleAsync(r => r.Name == dto.Name && r.IsDeleted == false, cancellationToken);
+        var role = await this._repository.GetRoleAsync(r => r.Name == dto.Name, cancellationToken);
         if (role != null)
         {
             throw new EntityAlreadyExistsException<Role>();
