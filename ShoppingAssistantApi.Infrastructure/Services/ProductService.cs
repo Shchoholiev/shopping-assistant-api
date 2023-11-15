@@ -93,9 +93,10 @@ public class ProductService : IProductService
             {
                 if (data == "[")
                 {
-                    _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageCreateDto()
+                    _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageDto()
                     {
                         Text = messageBuffer.Text,
+                        Role = MessageRoles.Application.ToString(),
                     }, cancellationToken);
                     mqchecker = false;
                 }
@@ -180,9 +181,10 @@ public class ProductService : IProductService
         }
         if (currentDataType == SearchEventType.Message)
         {
-            _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageCreateDto()
+            _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageDto()
             {
                 Text = messageBuffer.Text,
+                Role = MessageRoles.Application.ToString(),
             }, cancellationToken);
             mqchecker = false;
         }

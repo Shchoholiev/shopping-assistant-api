@@ -59,7 +59,7 @@ public class ProductTests
         _messagesRepositoryMock.Setup(m => m.GetCountAsync(It.IsAny<Expression<Func<Message, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
         
-        _wishListServiceMock.Setup(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageCreateDto>(), cancellationToken))
+        _wishListServiceMock.Setup(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageDto>(), cancellationToken))
             .Verifiable();
         
         _wishListServiceMock
@@ -135,7 +135,7 @@ public class ProductTests
         _messagesRepositoryMock.Setup(m => m.GetCountAsync(It.IsAny<Expression<Func<Message, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(3);
 
-        _wishListServiceMock.Setup(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageCreateDto>(), cancellationToken))
+        _wishListServiceMock.Setup(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageDto>(), cancellationToken))
             .Verifiable();
         
         _wishListServiceMock
@@ -186,7 +186,7 @@ public class ProductTests
         Assert.NotNull(actualSseEvents);
         Assert.Equal(expectedMessages, receivedMessages);
         Assert.Equal(expectedSuggestions, receivedSuggestions);
-        _wishListServiceMock.Verify(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageCreateDto>(), cancellationToken), Times.Once);
+        _wishListServiceMock.Verify(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageDto>(), cancellationToken), Times.Once);
     }
     
     
@@ -276,6 +276,6 @@ public class ProductTests
         _wishListServiceMock.Verify(w => w.AddProductToPersonalWishlistAsync(
              It.IsAny<string>(), It.IsAny<ProductCreateDto>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         _wishListServiceMock.Verify(w => w.AddMessageToPersonalWishlistAsync(
-            wishlistId, It.IsAny<MessageCreateDto>(), cancellationToken), Times.Once);
+            wishlistId, It.IsAny<MessageDto>(), cancellationToken), Times.Once);
     }
 }
