@@ -45,7 +45,7 @@ public class WishlistsService : IWishlistsService
             throw new InvalidDataException("Provided type is invalid.");
         }
 
-        newWishlist.CreatedById = (ObjectId) GlobalUser.Id;
+        newWishlist.CreatedById = GlobalUser.Id.Value;
         newWishlist.CreatedDateUtc = DateTime.UtcNow;
         newWishlist.Name = $"{newWishlist.Type} Search";
 
@@ -54,8 +54,8 @@ public class WishlistsService : IWishlistsService
         var newMessage = new Message
         {
             Text = dto.FirstMessageText,
-            Role = MessageRoles.User.ToString(),
-            CreatedById = (ObjectId) GlobalUser.Id,
+            Role = MessageRoles.Application.ToString(),
+            CreatedById = GlobalUser.Id.Value,
             CreatedDateUtc = DateTime.UtcNow,
             WishlistId = createdWishlist.Id
         };
@@ -95,12 +95,12 @@ public class WishlistsService : IWishlistsService
         var openAiMessage = await _openAiService.GetChatCompletion(chatCompletionRequest, cancellationToken);
 
         wishlist = await _wishlistsRepository.UpdateWishlistNameAsync(wishlist.Id, 
-                openAiMessage.Content, (ObjectId) GlobalUser.Id, cancellationToken);
+                openAiMessage.Content, GlobalUser.Id.Value, cancellationToken);
 
         return _mapper.Map<WishlistDto>(wishlist);
     }
 
-    public async Task<MessageDto> AddMessageToPersonalWishlistAsync(string wishlistId, MessageCreateDto dto, CancellationToken cancellationToken)
+    public async Task<MessageDto> AddMessageToPersonalWishlistAsync(string wishlistId, MessageDto dto, CancellationToken cancellationToken)
     {
         var newMessage = _mapper.Map<Message>(dto);
 
@@ -109,8 +109,7 @@ public class WishlistsService : IWishlistsService
             throw new InvalidDataException("Provided id is invalid.");
         }
 
-        newMessage.Role = MessageRoles.User.ToString();
-        newMessage.CreatedById = (ObjectId) GlobalUser.Id;
+        newMessage.CreatedById = GlobalUser.Id.Value;
         newMessage.CreatedDateUtc = DateTime.UtcNow;
         newMessage.WishlistId = wishlistObjectId;
 
@@ -168,7 +167,7 @@ public class WishlistsService : IWishlistsService
 
         await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
         
-        newProduct.CreatedById = (ObjectId) GlobalUser.Id;
+        newProduct.CreatedById = GlobalUser.Id.Value;
         newProduct.CreatedDateUtc = DateTime.UtcNow;
         newProduct.WishlistId = wishlistObjectId;
 

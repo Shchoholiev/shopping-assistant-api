@@ -3,6 +3,7 @@ using ShoppingAssistantApi.Domain.Enums;
 using ShoppingAssistantApi.Application.Models.Dtos;
 using ShoppingAssistantApi.Application.Paging;
 using Newtonsoft.Json.Linq;
+using MongoDB.Bson;
 
 namespace ShoppingAssistantApi.Tests.Tests;
 
@@ -87,6 +88,30 @@ public class WishlistsTests : TestsBase
         var startWishlistResponse = (WishlistDto?) jsonObject?.data?.startPersonalWishlist?.ToObject<WishlistDto>();
 
         Assert.NotNull(startWishlistResponse);
+
+        const string MessageText = "I want laptop";
+        var mutation = new
+        {
+            query = @"
+                mutation addMessageToPersonalWishlist($wishlistId: String!, $dto: MessageDtoInput!) { 
+                    addMessageToPersonalWishlist(wishlistId: $wishlistId, dto: $dto) { 
+                        role, text, createdById 
+                    } 
+                }",
+            variables = new
+            {
+                wishlistId = startWishlistResponse.Id,
+                dto = new
+                {
+                    id = ObjectId.Empty,
+                    text = MessageText,
+                    role = MessageRoles.User.ToString(),
+                    createdById = ObjectId.Empty,
+                }
+            }
+        };
+
+        await SendGraphQlRequestAsync(mutation);
 
         var generateWishlistNameMutation = new
         {
@@ -174,7 +199,7 @@ public class WishlistsTests : TestsBase
         var mutation = new
         {
             query = @"
-                mutation addMessageToPersonalWishlist($wishlistId: String!, $dto: MessageCreateDtoInput!) { 
+                mutation addMessageToPersonalWishlist($wishlistId: String!, $dto: MessageDtoInput!) { 
                     addMessageToPersonalWishlist(wishlistId: $wishlistId, dto: $dto) { 
                         role, text, createdById 
                     } 
@@ -184,7 +209,10 @@ public class WishlistsTests : TestsBase
                 wishlistId = TestingValidWishlistId,
                 dto = new
                 {
-                    text = MessageText
+                    id = ObjectId.Empty,
+                    text = MessageText,
+                    role = MessageRoles.User.ToString(),
+                    createdById = ObjectId.Empty,
                 }
             }
         };
@@ -242,7 +270,7 @@ public class WishlistsTests : TestsBase
             query = @"
                 mutation addProductToPersonalWishlist($wishlistId: String!, $dto: ProductCreateDtoInput!) {
                     addProductToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) {
-                        url, name, description, rating, imagesUrls, wasOpened
+                        url, name, price, description, rating, imagesUrls, wasOpened
                     } 
                 }",
             variables = new
@@ -252,6 +280,7 @@ public class WishlistsTests : TestsBase
                 {
                     url = "https://www.amazon.com/url",
                     name = "Generic name",
+                    price = 1,
                     description = "Generic description",
                     rating = 4.8,
                     imagesUrls = new string[]
@@ -272,6 +301,7 @@ public class WishlistsTests : TestsBase
         Assert.Equal("Generic name", product.Name);
         Assert.Equal("Generic description", product.Description);
         Assert.Equal(4.8, product.Rating);
+        Assert.Equal(1, product.Price);
         Assert.Equal("https://www.amazon.com/image-url-1", product.ImagesUrls[0]);
     }
 
