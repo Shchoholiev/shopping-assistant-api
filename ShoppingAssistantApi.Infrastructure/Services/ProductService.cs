@@ -64,12 +64,24 @@ public class ProductService : IProductService
         
         foreach (var item in previousMessages.Items)
         {
-            messagesForOpenAI
-                .Add(new OpenAiMessage() 
-                {
-                    Role = item.Role.ToLower(),
-                    Content = item.Text 
-                });
+            if (item.Role == "Application")
+            {
+                messagesForOpenAI
+                    .Add(new OpenAiMessage()
+                    {
+                        Role = OpenAiRole.Assistant.RequestConvert(),
+                        Content = item.Text
+                    });
+            }
+            else
+            {
+                messagesForOpenAI
+                    .Add(new OpenAiMessage()
+                    {
+                        Role = item.Role.ToLower(),
+                        Content = item.Text
+                    });
+            }
         }
             
         messagesForOpenAI.Add(new OpenAiMessage()
