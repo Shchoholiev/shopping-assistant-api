@@ -2,7 +2,7 @@ namespace ShoppingAssistantApi.Application.Models.OpenAi;
 
 public class ChatCompletionRequest
 {
-    public string Model { get; set; } = "gpt-4";
+    public string Model { get; set; } = "gpt-4-1106-preview";
 
     public List<OpenAiMessage> Messages { get; set; }
 
