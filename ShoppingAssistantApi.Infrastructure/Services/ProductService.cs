@@ -19,6 +19,10 @@ public class ProductService : IProductService
     private readonly IOpenAiService _openAiService;
 
     private readonly IMessagesRepository _messagesRepository;
+    
+    private bool mqchecker = false;
+    
+    private SearchEventType currentDataType = SearchEventType.Wishlist;
 
     public ProductService(IOpenAiService openAiService, IWishlistsService wishlistsService, IMessagesRepository messagesRepository)
     {
@@ -60,12 +64,24 @@ public class ProductService : IProductService
         
         foreach (var item in previousMessages.Items)
         {
-            messagesForOpenAI
-                .Add(new OpenAiMessage() 
-                {
-                    Role = item.Role.ToLower(),
-                    Content = item.Text 
-                });
+            if (item.Role == "Application")
+            {
+                messagesForOpenAI
+                    .Add(new OpenAiMessage()
+                    {
+                        Role = OpenAiRole.Assistant.RequestConvert(),
+                        Content = item.Text
+                    });
+            }
+            else
+            {
+                messagesForOpenAI
+                    .Add(new OpenAiMessage()
+                    {
+                        Role = item.Role.ToLower(),
+                        Content = item.Text
+                    });
+            }
         }
             
         messagesForOpenAI.Add(new OpenAiMessage()
@@ -79,20 +95,27 @@ public class ProductService : IProductService
         var suggestionBuffer = new Suggestion();
         var messageBuffer = new MessagePart();
         var productBuffer = new ProductName();
-        var currentDataType = SearchEventType.Wishlist;
         var dataTypeHolder = string.Empty;
+        var counter = 0;
 
         await foreach (var data in _openAiService.GetChatCompletionStream(chatRequest, cancellationToken))
         {
-            if (data.Contains("["))
+            counter++;
+            if (mqchecker && currentDataType == SearchEventType.Message && messageBuffer != null)
             {
-                if (dataTypeHolder=="[Message]" && messageBuffer.Text!=null)
+                if (data == "[")
                 {
-                    _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageCreateDto()
+                    _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageDto()
                     {
                         Text = messageBuffer.Text,
+                        Role = MessageRoles.Application.ToString(),
                     }, cancellationToken);
+                    mqchecker = false;
                 }
+            }
+            
+            if (data.Contains("["))
+            {
                 dataTypeHolder = string.Empty;
                 dataTypeHolder += data;
             }
@@ -101,13 +124,17 @@ public class ProductService : IProductService
             {
                 dataTypeHolder += data;
                 currentDataType = DetermineDataType(dataTypeHolder);
+                if (currentDataType == SearchEventType.Message)
+                {
+                    mqchecker = true;
+                }
             }
 
             else if (dataTypeHolder=="[" && !data.Contains("["))
             {
                 dataTypeHolder += data;
             }
-
+            
             else
             {
                 switch (currentDataType)
@@ -118,6 +145,7 @@ public class ProductService : IProductService
                             Event = SearchEventType.Message,
                             Data = data
                         };
+                        currentDataType = SearchEventType.Message;
                         messageBuffer.Text += data;
                         break;
 
@@ -152,6 +180,7 @@ public class ProductService : IProductService
                                 Name = productBuffer.Name,
                                 Rating = 0,
                                 Description = "",
+                                Price = 0,
                                 ImagesUrls = new []{"", ""},
                                 WasOpened = false
                             }, cancellationToken);
@@ -161,6 +190,15 @@ public class ProductService : IProductService
                         break;  
                 }
             }
+        }
+        if (currentDataType == SearchEventType.Message)
+        {
+            _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageDto()
+            {
+                Text = messageBuffer.Text,
+                Role = MessageRoles.Application.ToString(),
+            }, cancellationToken);
+            mqchecker = false;
         }
     }
 

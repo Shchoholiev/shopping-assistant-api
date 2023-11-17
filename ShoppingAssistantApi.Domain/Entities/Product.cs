@@ -17,6 +17,8 @@ public class Product : EntityBase
     public string[] ImagesUrls { get; set; }
 
     public bool WasOpened { get; set; }
+    
+    public double Price { get; set; }
 
     public ObjectId WishlistId { get; set; }
 }

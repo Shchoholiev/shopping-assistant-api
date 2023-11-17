@@ -10,7 +10,7 @@ public interface IWishlistsService
 
     Task<WishlistDto> GenerateNameForPersonalWishlistAsync(string wishlistId, CancellationToken cancellationToken);
 
-    Task<MessageDto> AddMessageToPersonalWishlistAsync(string wishlistId, MessageCreateDto dto, CancellationToken cancellationToken);
+    Task<MessageDto> AddMessageToPersonalWishlistAsync(string wishlistId, MessageDto dto, CancellationToken cancellationToken);
 
     Task<PagedList<WishlistDto>> GetPersonalWishlistsPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken);
 
