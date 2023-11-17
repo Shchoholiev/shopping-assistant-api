@@ -55,7 +55,8 @@ public abstract class BaseRepository<TEntity> : IBaseRepository<TEntity> where T
 
     public async Task<int> GetTotalCountAsync()
     {
-        return (int)(await this._collection.EstimatedDocumentCountAsync());
+        var filter = Builders<TEntity>.Filter.Eq("IsDeleted", false);
+        return (int)(await this._collection.CountDocumentsAsync(x => !x.IsDeleted));
     }
 
     public async Task<int> GetCountAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken)
