@@ -42,7 +42,7 @@ public class ProductService : IProductService
             "\n[Products] - return semicolon separated product names";
         
         var countOfMessage = await _messagesRepository
-            .GetCountAsync(message=>message.WishlistId==ObjectId.Parse((wishlistId)), cancellationToken);
+            .GetCountAsync(message=>message.WishlistId == ObjectId.Parse((wishlistId)), cancellationToken);
 
         var previousMessages = await _wishlistsService
             .GetMessagesPageFromPersonalWishlistAsync(wishlistId, 1, countOfMessage, cancellationToken);

@@ -116,7 +116,7 @@ public class UserManager : ServiceBase, IUserManager
             .GetOneAsync(r => 
                 r.Token == tokensModel.RefreshToken 
                 && r.CreatedById == userId
-                && r.IsDeleted == false, cancellationToken);
+                , cancellationToken);
         if (refreshTokenModel == null || refreshTokenModel.ExpiryDateUTC < DateTime.UtcNow)
         {
             throw new SecurityTokenExpiredException();
@@ -310,7 +310,7 @@ public class UserManager : ServiceBase, IUserManager
 
     private async Task CheckAndUpgradeToUserAsync(User user, CancellationToken cancellationToken)
     {
-        if (user.Roles.Any(x => x.Name == "Guest") && !user.Roles.Any(x => x.Name == "User"))
+        if (user.Roles.Any(x => x.Name == "Guest" && x.IsDeleted == false) && !user.Roles.Any(x => x.Name == "User" && x.IsDeleted == false))
         {
             if (!string.IsNullOrEmpty(user.PasswordHash) && (!string.IsNullOrEmpty(user.Email) || !string.IsNullOrEmpty(user.Phone)))
             {

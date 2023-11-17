@@ -3,6 +3,7 @@ using MongoDB.Driver;
 using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Domain.Common;
 using ShoppingAssistantApi.Persistance.Database;
+using System;
 using System.Linq.Expressions;
 
 namespace ShoppingAssistantApi.Persistance.Repositories;
@@ -21,12 +22,13 @@ public abstract class BaseRepository<TEntity> : IBaseRepository<TEntity> where T
 
     public async Task<TEntity> GetOneAsync(ObjectId id, CancellationToken cancellationToken)
     {
-        return await this._collection.Find(x => x.Id == id).FirstOrDefaultAsync(cancellationToken);
+        return await this._collection.Find(x => x.Id == id && x.IsDeleted == false).FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<TEntity> GetOneAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken)
     {
-        return await this._collection.Find(predicate).FirstOrDefaultAsync(cancellationToken);
+        return await this._collection.Find(Builders<TEntity>.Filter.Where(predicate) & Builders<TEntity>.Filter.Where(x => !x.IsDeleted))
+                                     .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken)
@@ -37,7 +39,7 @@ public abstract class BaseRepository<TEntity> : IBaseRepository<TEntity> where T
 
     public async Task<List<TEntity>> GetPageAsync(int pageNumber, int pageSize, CancellationToken cancellationToken)
     {
-        return await this._collection.Find(Builders<TEntity>.Filter.Empty)
+        return await this._collection.Find(Builders<TEntity>.Filter.Where(x => !x.IsDeleted))
                                      .Skip((pageNumber - 1) * pageSize)
                                      .Limit(pageSize)
                                      .ToListAsync(cancellationToken);
@@ -45,7 +47,7 @@ public abstract class BaseRepository<TEntity> : IBaseRepository<TEntity> where T
 
     public async Task<List<TEntity>> GetPageAsync(int pageNumber, int pageSize, Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken)
     {
-        return await this._collection.Find(predicate)
+        return await this._collection.Find(Builders<TEntity>.Filter.Where(predicate) & Builders<TEntity>.Filter.Where(x => !x.IsDeleted))
                                      .Skip((pageNumber - 1) * pageSize)
                                      .Limit(pageSize)
                                      .ToListAsync(cancellationToken);
@@ -53,17 +55,18 @@ public abstract class BaseRepository<TEntity> : IBaseRepository<TEntity> where T
 
     public async Task<int> GetTotalCountAsync()
     {
-        return (int)(await this._collection.EstimatedDocumentCountAsync());
+        var filter = Builders<TEntity>.Filter.Eq("IsDeleted", false);
+        return (int)(await this._collection.CountDocumentsAsync(x => !x.IsDeleted));
     }
 
     public async Task<int> GetCountAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken)
     {
-        return (int)(await this._collection.CountDocumentsAsync(predicate, cancellationToken: cancellationToken));
+        return (int)(await this._collection.CountDocumentsAsync(Builders<TEntity>.Filter.Where(predicate) & Builders<TEntity>.Filter.Where(x => !x.IsDeleted), cancellationToken: cancellationToken));
     }
 
     public async Task<bool> ExistsAsync(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken)
     {
-        return await this._collection.Find(predicate).AnyAsync(cancellationToken);
+        return await this._collection.Find(Builders<TEntity>.Filter.Where(predicate) & Builders<TEntity>.Filter.Where(x => !x.IsDeleted)).AnyAsync(cancellationToken);
     }
 
     public async Task<TEntity> DeleteAsync(TEntity entity, CancellationToken cancellationToken)

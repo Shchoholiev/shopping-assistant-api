@@ -26,6 +26,7 @@ public class WishlistsTests : TestsBase
 
     private const string TestingValidWishlistId = "ab79cde6f69abcd3efab65cd";
 
+    private const string TestingValidWishlistId2 = "65575253dbe88a3c118e1ca2";
 
     public WishlistsTests(TestingFactory<Program> factory)
         : base(factory)
@@ -178,7 +179,7 @@ public class WishlistsTests : TestsBase
                 }",
             variables = new
             {
-                wishlistId = TestingValidWishlistId
+                wishlistId = TestingValidWishlistId2
             }
         };
 
@@ -246,7 +247,7 @@ public class WishlistsTests : TestsBase
                 }",
             variables = new
             {
-                wishlistId = TestingValidWishlistId,
+                wishlistId = TestingValidWishlistId2,
                 pageNumber = 1,
                 pageSize = 2
             }
@@ -823,7 +824,7 @@ public class WishlistsTests : TestsBase
                 }",
             variables = new
             {
-                wishlistId = TestingValidWishlistId,
+                wishlistId = TestingValidWishlistId2,
                 pageNumber = 100,
                 pageSize = 2
             }
@@ -878,7 +879,7 @@ public class WishlistsTests : TestsBase
             query = "query productsPageFromPersonalWishlist($wishlistId: String!, $pageNumber: Int!, $pageSize: Int!) { productsPageFromPersonalWishlist (wishlistId: $wishlistId, pageNumber: $pageNumber, pageSize: $pageSize) { hasNextPage, hasPreviousPage, items { id, url, name, description, rating, imagesUrls, wasOpened, wishlistId }, pageNumber, pageSize, totalItems, totalPages } }",
             variables = new
             {
-                wishlistId = TestingValidWishlistId,
+                wishlistId = TestingValidWishlistId2,
                 pageNumber = 1,
                 pageSize = 100
             }
@@ -890,7 +891,7 @@ public class WishlistsTests : TestsBase
         Assert.NotNull(pagedList);
 
         Assert.Equal("Samsung 970 EVO Plus SSD 2TB NVMe M.2 Internal Solid State Hard Drive, V-NAND Technology, Storage and Memory Expansion for Gaming, Graphics w/ Heat Control, Max Speed, MZ-V7S2T0B/AM ", pagedList.Items.ToList()[1].Name);
-        Assert.Equal(TestingValidWishlistId, pagedList.Items.ToList()[1].WishlistId);
+        Assert.Equal(TestingValidWishlistId2, pagedList.Items.ToList()[1].WishlistId);
     }
 
     [Fact]

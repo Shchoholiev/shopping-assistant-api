@@ -109,12 +109,21 @@ public class DbInitializer
         var wishlistId2 = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab");
         var wishlistId3 = ObjectId.Parse("ab7c8c2d9edf39abcd1ef9ab");
         var wishlistId4 = ObjectId.Parse("ab8c8c2d9edf39abcd1ef9ab");
+        var wishlistId5 = ObjectId.Parse("65575253dbe88a3c118e1ca2");
 
         var wishlists = new Wishlist[]
         {
             new Wishlist
             {
                 Id = wishlistId1,
+                Name = "Gaming PC",
+                Type = WishlistTypes.Product.ToString(),
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
+            new Wishlist
+            {
+                Id = wishlistId5,
                 Name = "Gaming PC",
                 Type = WishlistTypes.Product.ToString(),
                 CreatedById = user1.Id,
@@ -162,6 +171,8 @@ public class DbInitializer
         var wishlistId2 = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab");
         var wishlistId3 = ObjectId.Parse("ab7c8c2d9edf39abcd1ef9ab");
         var wishlistId4 = ObjectId.Parse("ab8c8c2d9edf39abcd1ef9ab");
+        var wishlistId5 = ObjectId.Parse("65575253dbe88a3c118e1ca2");
+
 
         var messages = new Message[]
         {
@@ -212,6 +223,51 @@ public class DbInitializer
             },
             new Message
             {
+                Text = "Message 1",
+                Role = MessageRoles.User.ToString(),
+                WishlistId = wishlistId5,
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
+            new Message
+            {
+                Text = "Message 2",
+                Role = MessageRoles.Application.ToString(),
+                WishlistId = wishlistId5,
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(5)
+            },
+            new Message
+            {
+                Text = "Message 3",
+                Role = MessageRoles.User.ToString(),
+                WishlistId = wishlistId5,
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(20)
+            },
+            new Message
+            {
+                Text = "Message 4",
+                Role = MessageRoles.Application.ToString(),
+                WishlistId = wishlistId5,
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(25)
+            },
+            new Message
+            {
+                Text = "Message 5",
+                Role = MessageRoles.User.ToString(),
+                WishlistId = wishlistId5,
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(45)
+            },
+            new Message
+            {
+                Text = "Message 6",
+                Role = MessageRoles.Application.ToString(),
+                WishlistId = wishlistId5,
+                CreatedDateUtc = DateTime.UtcNow.AddSeconds(50)
+            },
+            new Message
+            {
                 Text = "Prompt",
                 Role = MessageRoles.User.ToString(),
                 WishlistId = wishlistId2,
@@ -249,6 +305,7 @@ public class DbInitializer
 
         var wishlistId1 = ObjectId.Parse("ab79cde6f69abcd3efab65cd");
         var wishlistId2 = ObjectId.Parse("ab6c2c2d9edf39abcd1ef9ab");
+        var wishlistId3 = ObjectId.Parse("65575253dbe88a3c118e1ca2");
 
         var products = new Product[]
         {
@@ -283,6 +340,40 @@ public class DbInitializer
                 },
                 WasOpened = false,
                 WishlistId = wishlistId1,
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
+                        new Product
+            {
+                Name = "AMD Ryzen 5 5600G 6-Core 12-Thread Unlocked Desktop Processor with Radeon Graphics",
+                Description = "Features best-in-class graphics performance in a desktop processor for smooth 1080p gaming, no graphics card required",
+                Rating = 4.8,
+                Price = 120,
+                Url = "https://a.co/d/5ceuIrq",
+                ImagesUrls = new string[]
+                {
+                    "https://m.media-amazon.com/images/I/51f2hkWjTlL._AC_SL1200_.jpg",
+                    "https://m.media-amazon.com/images/I/51iji7Gel-L._AC_SL1200_.jpg"
+                },
+                WasOpened = false,
+                WishlistId = wishlistId3,
+                CreatedById = user1.Id,
+                CreatedDateUtc = DateTime.UtcNow
+            },
+            new Product
+            {
+                Name = "Samsung 970 EVO Plus SSD 2TB NVMe M.2 Internal Solid State Hard Drive, V-NAND Technology, Storage and Memory Expansion for Gaming, Graphics w/ Heat Control, Max Speed, MZ-V7S2T0B/AM ",
+                Description = "7 Year Limited Warranty: The 970 EVO Plus provides up to 1200 TBW (Terabytes Written) with 5-years of protection for exceptional endurance powered by the latest V-NAND technology and Samsung's reputation for quality ",
+                Rating = 4.8,
+                Price = 153,
+                Url = "https://a.co/d/gxnuqs1",
+                ImagesUrls = new string[]
+                {
+                    "https://m.media-amazon.com/images/I/51Brl+iYtvL._AC_SL1001_.jpg",
+                    "https://m.media-amazon.com/images/I/51GOfLlVwoL._AC_SL1001_.jpg"
+                },
+                WasOpened = false,
+                WishlistId = wishlistId3,
                 CreatedById = user1.Id,
                 CreatedDateUtc = DateTime.UtcNow
             },

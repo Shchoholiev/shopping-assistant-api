@@ -73,7 +73,8 @@ public class WishlistsService : IWishlistsService
 
         var wishlist = await TryGetPersonalWishlist(wishlistObjectId, cancellationToken);
 
-        var firstUserMessage = (await _messagesRepository.GetPageAsync(1, 1, x => x.WishlistId == wishlistObjectId && x.Role == MessageRoles.User.ToString(), cancellationToken)).First();
+        var firstUserMessage = 
+            (await _messagesRepository.GetPageAsync(1, 1, x => x.WishlistId == wishlistObjectId && x.Role == MessageRoles.User.ToString(), cancellationToken)).First();
 
         var chatCompletionRequest = new ChatCompletionRequest
         {
