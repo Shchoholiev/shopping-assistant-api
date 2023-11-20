@@ -284,7 +284,6 @@ public class WishlistsTests : TestsBase
                     price = 1,
                     description = "Generic description",
                     rating = 4.8,
-                    price = 1,
                     imagesUrls = new string[]
                     {
                         "https://www.amazon.com/image-url-1",
