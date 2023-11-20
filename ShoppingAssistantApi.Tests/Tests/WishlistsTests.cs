@@ -242,7 +242,7 @@ public class WishlistsTests : TestsBase
             query = @"
                 mutation addProductToPersonalWishlist($wishlistId: String!, $dto: ProductCreateDtoInput!) {
                     addProductToPersonalWishlist (wishlistId: $wishlistId, dto: $dto) {
-                        url, name, description, rating, imagesUrls, wasOpened
+                        url, name, price, description, rating, imagesUrls, wasOpened
                     } 
                 }",
             variables = new
@@ -254,6 +254,7 @@ public class WishlistsTests : TestsBase
                     name = "Generic name",
                     description = "Generic description",
                     rating = 4.8,
+                    price = 1,
                     imagesUrls = new string[]
                     {
                         "https://www.amazon.com/image-url-1",
