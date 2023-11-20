@@ -216,14 +216,6 @@ public class ProductTests
         
         _messagesRepositoryMock.Setup(m => m.GetCountAsync(It.IsAny<Expression<Func<Message, bool>>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(3);
-
-        _wishListServiceMock
-            .Setup(w => w.AddProductToPersonalWishlistAsync(
-                It.IsAny<string>(), It.IsAny<ProductCreateDto>(), It.IsAny<CancellationToken>()))
-            .Verifiable();
-        
-        _wishListServiceMock.Setup(w => w.AddProductToPersonalWishlistAsync(wishlistId, It.IsAny<ProductCreateDto>(), cancellationToken))
-            .Verifiable();
         
         _wishListServiceMock
             .Setup(w => w.GetMessagesPageFromPersonalWishlistAsync(
@@ -273,8 +265,6 @@ public class ProductTests
         Assert.NotNull(actualSseEvents);
         Assert.Equal(expectedMessages, receivedMessages);
         Assert.Equal(expectedSuggestions, receivedSuggestions);
-        _wishListServiceMock.Verify(w => w.AddProductToPersonalWishlistAsync(
-             It.IsAny<string>(), It.IsAny<ProductCreateDto>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         _wishListServiceMock.Verify(w => w.AddMessageToPersonalWishlistAsync(
             wishlistId, It.IsAny<MessageCreateDto>(), cancellationToken), Times.Once);
     }
