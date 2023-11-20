@@ -172,18 +172,6 @@ public class ProductService : IProductService
                                 Data = productBuffer.Name
                             };
                             productBuffer.Name = string.Empty;
-                                
-                            //a complete description of the entity when the Amazon API is connected
-                            await _wishlistsService.AddProductToPersonalWishlistAsync(wishlistId, new ProductCreateDto()
-                            {
-                                Url = "",
-                                Name = productBuffer.Name,
-                                Rating = 0,
-                                Description = "",
-                                Price = 0,
-                                ImagesUrls = new []{"", ""},
-                                WasOpened = false
-                            }, cancellationToken);
                             break;
                         }
                         productBuffer.Name += data;
