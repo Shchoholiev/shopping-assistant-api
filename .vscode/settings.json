@@ -1,0 +1,6 @@
+{
+    "files.exclude": {
+        "**/bin": true
+    },
+    "editor.formatOnType": true
+}

@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HotChocolate" Version="13.3.3" />
+    <PackageReference Include="HotChocolate.AspNetCore" Version="13.3.3" />
+    <PackageReference Include="HotChocolate.AspNetCore.Authorization" Version="13.3.3" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.5" />
+    <PackageReference Include="Microsoft.Azure.AppConfiguration.AspNetCore" Version="6.1.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ShoppingAssistantApi.Application\ShoppingAssistantApi.Application.csproj" />
+    <ProjectReference Include="..\ShoppingAssistantApi.Domain\ShoppingAssistantApi.Domain.csproj" />
+    <ProjectReference Include="..\ShoppingAssistantApi.Infrastructure\ShoppingAssistantApi.Infrastructure.csproj" />
+    <ProjectReference Include="..\ShoppingAssistantApi.Persistance\ShoppingAssistantApi.Persistance.csproj" />
+  </ItemGroup>
+
+
+</Project>
