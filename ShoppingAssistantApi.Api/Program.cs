@@ -17,6 +17,7 @@ builder.Services.AddServices();
 builder.Services.AddHttpClient(builder.Configuration);
 builder.Services.AddGraphQl();
 builder.Services.AddControllers();
+builder.Services.AddCorsAllowAny();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -29,6 +30,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors("allowAnyOrigin");
 
 app.UseHttpsRedirection();
 
