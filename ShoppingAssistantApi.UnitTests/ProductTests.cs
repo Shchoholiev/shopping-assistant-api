@@ -1,4 +1,6 @@
-﻿using Moq;
+﻿using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
+using Moq;
 using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Application.IServices;
 using ShoppingAssistantApi.Application.Models.CreateDtos;
@@ -27,14 +29,14 @@ public class ProductTests
         _messagesRepositoryMock = new Mock<IMessagesRepository>();
         _openAiServiceMock = new Mock<IOpenAiService>();
         _wishListServiceMock = new Mock<IWishlistsService>();
-        _productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object, _messagesRepositoryMock.Object);
+        _productService = new ProductService(_openAiServiceMock.Object, _wishListServiceMock.Object, _messagesRepositoryMock.Object, new Mock<ILogger<ProductService>>().Object);
     }
     
     [Fact]
     public async Task SearchProductAsync_WhenWishlistsWithoutMessages_ReturnsExpectedEvents()
     {
         // Arrange
-        string wishlistId = "existingWishlistId";
+        string wishlistId = "657657677c13ae4bc95e2f41";
         var message = new MessageCreateDto
         {
             Text = "Your message text here"
@@ -44,47 +46,28 @@ public class ProductTests
         // Define your expected SSE data for the test
         var expectedSseData = new List<string>
         {
-            "[", "Message", "]", " What", " u", " want", " ?", "[", "Options", "]", " USB-C", " ;", " Keyboard", " ultra", 
-            " ;", "[", "Options", "]", " USB", "-C", " ;", "[", "Products", "]", " GTX", " 3090", " ;", " GTX",
+            "[", "Message", "]", " What", " u", " want", " ?", "[", "Suggestions", "]", " USB-C", " ;", " Keyboard", " ultra", 
+            " ;", "[", "Suggestions", "]", " USB", "-C", " ;", "[", "Products", "]", " GTX", " 3090", " ;", " GTX",
             " 3070TI", " ;", " GTX", " 4070TI", " ;", " ?", "[", "Message", "]", " What", " u", " want", " ?"
         };
         
         var expectedMessages = new List<string> { " What", " u", " want", " ?", " What", " u", " want", " ?" };
-        var expectedSuggestion = new List<string> { " USB-C", " Keyboard ultra", " USB-C" };
+        var expectedSuggestion = new List<string> { "USB-C", "Keyboard ultra", "USB-C" };
 
         // Mock the GetChatCompletionStream method to provide the expected SSE data
         _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
             .Returns(expectedSseData.ToAsyncEnumerable());
         
-        _messagesRepositoryMock.Setup(m => m.GetCountAsync(It.IsAny<Expression<Func<Message, bool>>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-        
-        _wishListServiceMock.Setup(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageDto>(), cancellationToken))
-            .Verifiable();
-        
-        _wishListServiceMock
-            .Setup(m => m.GetMessagesPageFromPersonalWishlistAsync(
-                    It.IsAny<string>(),
-                    It.IsAny<int>(),
-                    It.IsAny<int>(),
-                    It.IsAny<CancellationToken>()) 
-            )
-            .ReturnsAsync(new PagedList<MessageDto>(
-                new List<MessageDto>
+        _messagesRepositoryMock.Setup(m => m.GetWishlistMessagesAsync(It.IsAny<ObjectId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Message>
                 {
-                    new MessageDto
+                    new() 
                     {
                         Text = "What are you looking for?",
-                        Id = "3",
-                        CreatedById = "User2",
                         Role = "User"
                     },
-                },
-                1,
-                1,
-                1
-            ));
-        
+                });
+
         // Act
         var resultStream = _productService.SearchProductAsync(wishlistId, message, cancellationToken);
 
@@ -113,7 +96,7 @@ public class ProductTests
     public async void SearchProductAsync_WithExistingMessageInWishlist_ReturnsExpectedEvents()
     {
         // Arrange
-        var wishlistId = "your_wishlist_id";
+        var wishlistId = "657657677c13ae4bc95e2f41";
         var message = new MessageCreateDto { Text = "Your message text" };
         var cancellationToken = new CancellationToken();
 
@@ -121,8 +104,8 @@ public class ProductTests
         
         var expectedSseData = new List<string>
         {
-            "[", "Message", "]", " What", " u", " want", " ?", "[", "Options", "]", "USB-C", " ;", "Keyboard", " ultra", 
-            " ;", "[", "Options", "]", "USB", "-C", " ;"
+            "[", "Message", "]", " What", " u", " want", " ?", "[", "Suggestions", "]", "USB-C", " ;", "Keyboard", " ultra", 
+            " ;", "[", "Suggestions", "]", "USB", "-C", " ;"
         };
         
         var expectedMessages = new List<string> { " What", " u", " want", " ?" };
@@ -131,40 +114,25 @@ public class ProductTests
         // Mock the GetChatCompletionStream method to provide the expected SSE data
         _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
             .Returns(expectedSseData.ToAsyncEnumerable());
-        
-        _messagesRepositoryMock.Setup(m => m.GetCountAsync(It.IsAny<Expression<Func<Message, bool>>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(3);
 
-        _wishListServiceMock.Setup(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageDto>(), cancellationToken))
-            .Verifiable();
-        
-        _wishListServiceMock
-            .Setup(w => w.GetMessagesPageFromPersonalWishlistAsync(
-                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PagedList<MessageDto>(new List<MessageDto>
-            {
-                new MessageDto
+        _messagesRepositoryMock.Setup(m => m.GetWishlistMessagesAsync(It.IsAny<ObjectId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Message>
                 {
-                    Text = "Message 1",
-                    Id = "1",
-                    CreatedById = "User2",
-                    Role = "User"
-                },
-                new MessageDto
-                {
-                    Text = "Message 2",
-                    Id = "2",
-                    CreatedById = "User2",
-                    Role = "User"
-                },
-                new MessageDto
-                {
-                    Text = "Message 3",
-                    Id = "3",
-                    CreatedById = "User2",
-                    Role = "User"
-                },
-            }, 1, 3, 3));
+                   new() {
+                        Text = "Message 1",
+                        Role = "User"
+                    },
+                    new Message
+                    {
+                        Text = "Message 2",
+                        Role = "User"
+                    },
+                    new Message
+                    {
+                        Text = "Message 3",
+                        Role = "User"
+                    },
+                });
         
         // Act
         var resultStream = _productService.SearchProductAsync(wishlistId, message, cancellationToken);
@@ -186,7 +154,6 @@ public class ProductTests
         Assert.NotNull(actualSseEvents);
         Assert.Equal(expectedMessages, receivedMessages);
         Assert.Equal(expectedSuggestions, receivedSuggestions);
-        _wishListServiceMock.Verify(w => w.AddMessageToPersonalWishlistAsync(wishlistId, It.IsAny<MessageDto>(), cancellationToken), Times.Once);
     }
     
     
@@ -194,7 +161,7 @@ public class ProductTests
     public async void SearchProductAsync_WithExistingMessageInWishlistAndAddProduct_ReturnsExpectedEvents()
     {
         // Arrange
-        var wishlistId = "your_wishlist_id";
+        var wishlistId = "657657677c13ae4bc95e2f41";
         var message = new MessageCreateDto { Text = "Your message text" };
         var cancellationToken = new CancellationToken();
 
@@ -202,8 +169,8 @@ public class ProductTests
         
         var expectedSseData = new List<string>
         {
-            "[", "Message", "]", " What", " u", " want", " ?", "[", "Options", "]", "USB-C", " ;", "Keyboard", " ultra", 
-            " ;", "[", "Options", "]", "USB", "-C", " ;", "[", "Products", "]", " GTX", " 3090", " ;", " GTX",
+            "[", "Message", "]", " What", " u", " want", " ?", "[", "Suggestions", "]", "USB-C", " ;", "Keyboard", " ultra", 
+            " ;", "[", "Suggestions", "]", "USB", "-C", " ;", "[", "Products", "]", " GTX", " 3090", " ;", " GTX",
             " 3070TI", " ;", " GTX", " 4070TI", " ;", " ?"
         };
         
@@ -214,36 +181,25 @@ public class ProductTests
         _openAiServiceMock.Setup(x => x.GetChatCompletionStream(It.IsAny<ChatCompletionRequest>(), cancellationToken))
             .Returns(expectedSseData.ToAsyncEnumerable());
         
-        _messagesRepositoryMock.Setup(m => m.GetCountAsync(It.IsAny<Expression<Func<Message, bool>>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(3);
-        
-        _wishListServiceMock
-            .Setup(w => w.GetMessagesPageFromPersonalWishlistAsync(
-                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new PagedList<MessageDto>(new List<MessageDto>
-            {
-                new MessageDto
+        _messagesRepositoryMock.Setup(m => m.GetWishlistMessagesAsync(It.IsAny<ObjectId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Message>
                 {
-                    Text = "Message 1",
-                    Id = "1",
-                    CreatedById = "User2",
-                    Role = "User"
-                },
-                new MessageDto
-                {
-                    Text = "Message 2",
-                    Id = "2",
-                    CreatedById = "User2",
-                    Role = "User"
-                },
-                new MessageDto
-                {
-                    Text = "Message 3",
-                    Id = "3",
-                    CreatedById = "User2",
-                    Role = "User"
-                },
-            }, 1, 3, 3));
+                   new() 
+                   {
+                        Text = "Message 1",
+                        Role = "User"
+                    },
+                    new() 
+                    {
+                        Text = "Message 2",
+                        Role = "User"
+                    },
+                    new() 
+                    {
+                        Text = "Message 3",
+                        Role = "User"
+                    },
+                });
         
         // Act
         var resultStream = _productService.SearchProductAsync(wishlistId, message, cancellationToken);
@@ -265,7 +221,5 @@ public class ProductTests
         Assert.NotNull(actualSseEvents);
         Assert.Equal(expectedMessages, receivedMessages);
         Assert.Equal(expectedSuggestions, receivedSuggestions);
-        _wishListServiceMock.Verify(w => w.AddMessageToPersonalWishlistAsync(
-            wishlistId, It.IsAny<MessageDto>(), cancellationToken), Times.Once);
     }
 }
