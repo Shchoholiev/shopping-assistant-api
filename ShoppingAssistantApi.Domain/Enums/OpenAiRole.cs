@@ -9,18 +9,14 @@ public enum OpenAiRole
 
 public static class OpenAiRoleExtensions
 {
-    public static string RequestConvert(this OpenAiRole role)
+    public static string ToRequestString(this OpenAiRole role)
     {
-        switch (role)
+        return role switch
         {
-            case OpenAiRole.System:
-                return "system";
-            case OpenAiRole.Assistant:
-                return "assistant";
-            case OpenAiRole.User:
-                return "user";
-            default:
-                return "";
-        }
+            OpenAiRole.System => "system",
+            OpenAiRole.Assistant => "assistant",
+            OpenAiRole.User => "user",
+            _ => "",
+        };
     }
 }

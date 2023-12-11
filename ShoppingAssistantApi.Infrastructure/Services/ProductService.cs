@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Application.IServices;
@@ -6,7 +6,6 @@ using ShoppingAssistantApi.Application.Models.CreateDtos;
 using ShoppingAssistantApi.Application.Models.Dtos;
 using ShoppingAssistantApi.Application.Models.OpenAi;
 using ShoppingAssistantApi.Application.Models.ProductSearch;
-using ShoppingAssistantApi.Domain.Entities;
 using ShoppingAssistantApi.Domain.Enums;
 using ServerSentEvent = ShoppingAssistantApi.Application.Models.ProductSearch.ServerSentEvent;
 
@@ -15,126 +14,113 @@ namespace ShoppingAssistantApi.Infrastructure.Services;
 public class ProductService : IProductService
 {
     private readonly IWishlistsService _wishlistsService;
-    
+
     private readonly IOpenAiService _openAiService;
 
     private readonly IMessagesRepository _messagesRepository;
-    
-    private bool mqchecker = false;
-    
-    private SearchEventType currentDataType = SearchEventType.Wishlist;
 
-    public ProductService(IOpenAiService openAiService, IWishlistsService wishlistsService, IMessagesRepository messagesRepository)
+    private readonly ILogger<ProductService> _logger;
+
+    public ProductService(
+        IOpenAiService openAiService, 
+        IWishlistsService wishlistsService, 
+        IMessagesRepository messagesRepository,
+        ILogger<ProductService> logger)
     {
         _openAiService = openAiService;
         _wishlistsService = wishlistsService;
         _messagesRepository = messagesRepository;
+        _logger = logger;
     }
     
-    public async IAsyncEnumerable<ServerSentEvent> SearchProductAsync(string wishlistId, MessageCreateDto message, CancellationToken cancellationToken)
+    public async IAsyncEnumerable<ServerSentEvent> SearchProductAsync(string wishlistId, MessageCreateDto newMessage, CancellationToken cancellationToken)
     {
-        string promptForGpt =
+        var systemPrompt =
             "You are a Shopping Assistant that helps people find product recommendations. Ask user additional questions if more context needed." +
             "\nYou must return data with one of the prefixes:" +
-            "\n[Question] - return question" +
+            "\n[Question] - return question. Must be followed by suggestions how to answer the question" +
             "\n[Suggestions] - return semicolon separated suggestion how to answer to a question" +
             "\n[Message] - return text" +
             "\n[Products] - return semicolon separated product names";
         
-        var countOfMessage = await _messagesRepository
-            .GetCountAsync(message=>message.WishlistId == ObjectId.Parse((wishlistId)), cancellationToken);
-
-        var previousMessages = await _wishlistsService
-            .GetMessagesPageFromPersonalWishlistAsync(wishlistId, 1, countOfMessage, cancellationToken);
+        var wishlistObjectId = ObjectId.Parse(wishlistId);
+        var messages = await _messagesRepository.GetWishlistMessagesAsync(wishlistObjectId, cancellationToken);
 
         var chatRequest = new ChatCompletionRequest
         {
             Messages = new List<OpenAiMessage>
             {
-                new OpenAiMessage
-                {
-                    Role = OpenAiRoleExtensions.RequestConvert(OpenAiRole.System),
-                    Content = promptForGpt
+                new() {
+                    Role = OpenAiRole.System.ToRequestString(),
+                    Content = systemPrompt
                 }
             }
         };
         
-        
-        var messagesForOpenAI = new List<OpenAiMessage>();
-        
-        foreach (var item in previousMessages.Items)
+        for (int i = 0; i < messages.Count; i++)
         {
-            if (item.Role == "Application")
+            var message = messages[i];
+            if (i == 0)
             {
-                messagesForOpenAI
-                    .Add(new OpenAiMessage()
-                    {
-                        Role = OpenAiRole.Assistant.RequestConvert(),
-                        Content = item.Text
-                    });
+                message.Text = "[Question] " + message.Text + "\n [Suggestions] Bicycle, Laptop";
             }
-            else
-            {
-                messagesForOpenAI
-                    .Add(new OpenAiMessage()
-                    {
-                        Role = item.Role.ToLower(),
-                        Content = item.Text
-                    });
-            }
+
+            chatRequest.Messages
+                .Add(new OpenAiMessage()
+                {
+                    Role = message.Role == "Application" ? "assistant" : "user",
+                    Content = message.Text
+                });
         }
             
-        messagesForOpenAI.Add(new OpenAiMessage()
+        chatRequest.Messages.Add(new ()
         {
-            Role = OpenAiRoleExtensions.RequestConvert(OpenAiRole.User),
-            Content = message.Text
+            Role = OpenAiRole.User.ToRequestString(),
+            Content = newMessage.Text
         });
-            
-        chatRequest.Messages.AddRange(messagesForOpenAI);
-            
+
+        // Don't wait for the task to finish because we dont need the result of this task
+        var dto = new MessageDto()
+        {
+            Text = newMessage.Text,
+            Role = MessageRoles.User.ToString(),
+        };
+        var saveNewMessageTask = _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, dto, cancellationToken);
+        
+        var currentDataType = SearchEventType.Wishlist;
         var suggestionBuffer = new Suggestion();
         var messageBuffer = new MessagePart();
         var productBuffer = new ProductName();
         var dataTypeHolder = string.Empty;
-        var counter = 0;
 
         await foreach (var data in _openAiService.GetChatCompletionStream(chatRequest, cancellationToken))
         {
-            counter++;
-            if (mqchecker && currentDataType == SearchEventType.Message && messageBuffer != null)
+            if (data.Contains('['))
             {
-                if (data == "[")
+                dataTypeHolder = data;
+            }
+            else if (data.Contains(']'))
+            {
+                if (currentDataType == SearchEventType.Message)
                 {
-                    _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageDto()
+                    _ = await saveNewMessageTask;
+                    // Don't wait for the task to finish because we dont need the result of this task
+                    _ = _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageDto()
                     {
                         Text = messageBuffer.Text,
                         Role = MessageRoles.Application.ToString(),
                     }, cancellationToken);
-                    mqchecker = false;
                 }
-            }
-            
-            if (data.Contains("["))
-            {
-                dataTypeHolder = string.Empty;
-                dataTypeHolder += data;
-            }
 
-            else if (data.Contains("]"))
-            {
                 dataTypeHolder += data;
                 currentDataType = DetermineDataType(dataTypeHolder);
-                if (currentDataType == SearchEventType.Message)
-                {
-                    mqchecker = true;
-                }
-            }
 
-            else if (dataTypeHolder=="[" && !data.Contains("["))
+                dataTypeHolder = string.Empty;
+            }
+            else if (dataTypeHolder.Contains('['))
             {
                 dataTypeHolder += data;
             }
-            
             else
             {
                 switch (currentDataType)
@@ -147,46 +133,43 @@ public class ProductService : IProductService
                         };
                         currentDataType = SearchEventType.Message;
                         messageBuffer.Text += data;
+
                         break;
 
                     case SearchEventType.Suggestion:
-                        if (data.Contains(";"))
+                        if (data.Contains(';'))
                         {
                             yield return new ServerSentEvent
                             {
                                 Event = SearchEventType.Suggestion,
-                                Data = suggestionBuffer.Text
+                                Data = suggestionBuffer.Text.Trim()
                             };
                             suggestionBuffer.Text = string.Empty;
                             break;
                         } 
+
                         suggestionBuffer.Text += data;
+
                         break;
                         
                     case SearchEventType.Product:
-                        if (data.Contains(";"))
+                        if (data.Contains(';'))
                         {
                             yield return new ServerSentEvent
                             {
                                 Event = SearchEventType.Product,
-                                Data = productBuffer.Name
+                                Data = productBuffer.Name.Trim()
                             };
                             productBuffer.Name = string.Empty;
+
                             break;
                         }
+
                         productBuffer.Name += data;
+
                         break;  
                 }
             }
-        }
-        if (currentDataType == SearchEventType.Message)
-        {
-            _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageDto()
-            {
-                Text = messageBuffer.Text,
-                Role = MessageRoles.Application.ToString(),
-            }, cancellationToken);
-            mqchecker = false;
         }
     }
 
@@ -196,7 +179,7 @@ public class ProductService : IProductService
         {
             return SearchEventType.Message;
         }
-        else if (dataTypeHolder.StartsWith("[Options]"))
+        else if (dataTypeHolder.StartsWith("[Suggestions]"))
         {
             return SearchEventType.Suggestion;
         }
@@ -213,5 +196,4 @@ public class ProductService : IProductService
             return SearchEventType.Wishlist;
         }
     }
-    
 }

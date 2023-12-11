@@ -1,8 +1,6 @@
-using System.IO;
-using System.Net.Http.Headers;
 using System.Text;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;
 using ShoppingAssistantApi.Application.IServices;
 using ShoppingAssistantApi.Application.Models.OpenAi;
@@ -23,9 +21,14 @@ public class OpenAiService : IOpenAiService
 
     private readonly HttpClient _httpClient;
 
-    public OpenAiService(IHttpClientFactory httpClientFactory)
+    private readonly ILogger<OpenAiService> _logger;
+
+    public OpenAiService(
+        IHttpClientFactory httpClientFactory,
+        ILogger<OpenAiService> logger)
     {
         _httpClient = httpClientFactory.CreateClient("OpenAiHttpClient");
+        _logger = logger;
     }
 
     public async Task<OpenAiMessage> GetChatCompletion(ChatCompletionRequest chat, CancellationToken cancellationToken)
@@ -45,6 +48,8 @@ public class OpenAiService : IOpenAiService
 
     public async IAsyncEnumerable<string> GetChatCompletionStream(ChatCompletionRequest chat, CancellationToken cancellationToken)
     {
+        _logger.LogInformation($"Sending completion stream request to OpenAI.");
+
         chat.Stream = true;
         var jsonBody = JsonConvert.SerializeObject(chat, _jsonSettings);
         
@@ -58,12 +63,22 @@ public class OpenAiService : IOpenAiService
         while (!cancellationToken.IsCancellationRequested)
         {
             var jsonChunk = await reader.ReadLineAsync();
+            
+            _logger.LogInformation($"Received chunk from OpenAI.");
+
             if (jsonChunk.StartsWith("data: "))
             {
                 jsonChunk = jsonChunk.Substring("data: ".Length);
-                if (jsonChunk == "[DONE]") break;
+                if (jsonChunk == "[DONE]")
+                {
+                    _logger.LogInformation($"Finished getting response from OpenAI");
+                    break;
+                }
+
                 var data = JsonConvert.DeserializeObject<OpenAiResponse>(jsonChunk);
+
                 if (data.Choices[0].Delta.Content == "" || data.Choices[0].Delta.Content == null) continue;
+
                 yield return data.Choices[0].Delta.Content;
             }
         }

@@ -8,7 +8,6 @@ using ShoppingAssistantApi.Domain.Enums;
 
 namespace ShoppingAssistantApi.Api.Controllers;
 
-[Authorize]
 public class ProductsSearchController : BaseController
 {
     private readonly IProductService _productService;
@@ -21,16 +20,10 @@ public class ProductsSearchController : BaseController
         _wishlistsService = wishlistsService;
     }
     
+    [Authorize]
     [HttpPost("search/{wishlistId}")]
-    public async Task StreamDataToClient(string wishlistId, [FromBody]MessageCreateDto message, CancellationToken cancellationToken)
+    public async Task StreamDataToClient(string wishlistId, [FromBody] MessageCreateDto message, CancellationToken cancellationToken)
     {
-        var dto = new MessageDto()
-        {
-            Text = message.Text,
-            Role = MessageRoles.User.ToString(),
-        };
-        await _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, dto, cancellationToken);
-
         Response.Headers.Add("Content-Type", "text/event-stream");
         Response.Headers.Add("Cache-Control", "no-cache");
         Response.Headers.Add("Connection", "keep-alive");
@@ -43,8 +36,8 @@ public class ProductsSearchController : BaseController
             
             var serverSentEvent = $"event: {sse.Event}\ndata: {chunk}\n\n";
             
-            await Response.WriteAsync(serverSentEvent);
-            await Response.Body.FlushAsync();
+            await Response.WriteAsync(serverSentEvent, cancellationToken: cancellationToken);
+            await Response.Body.FlushAsync(cancellationToken);
         }
     }
     

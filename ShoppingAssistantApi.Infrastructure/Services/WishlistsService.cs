@@ -82,12 +82,12 @@ public class WishlistsService : IWishlistsService
             {
                 new OpenAiMessage
                 {
-                    Role = OpenAiRole.System.RequestConvert(),
+                    Role = OpenAiRole.System.ToRequestString(),
                     Content = "You will be provided with a general information about some product and your task is to generate general (not specific to any company or brand) chat name where recommendations on which specific product to buy will be given. Only name he product without adverbs and adjectives. Limit the name length to 5 words\nExamples:\n  - Prompt: Hub For Macbook. Answer: Macbook Hub\n  - Prompt: What is the best power bank for MacBook with capacity 20000 mAh and power near 20V? Answer: Macbook Powerbank\nIf the information tells nothing about some product answer with short generic name"
                 },
                 new OpenAiMessage
                 {
-                    Role = OpenAiRole.User.RequestConvert(),
+                    Role = OpenAiRole.User.ToRequestString(),
                     Content = firstUserMessage.Text
                 }
             }
