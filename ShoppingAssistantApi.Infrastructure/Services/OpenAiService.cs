@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -54,33 +55,31 @@ public class OpenAiService : IOpenAiService
         var jsonBody = JsonConvert.SerializeObject(chat, _jsonSettings);
         
         var body = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-
-        using var httpResponse = await _httpClient.PostAsync("", body, cancellationToken);
-
-        using var responseStream = await httpResponse.Content.ReadAsStreamAsync(cancellationToken);
-        using var reader = new StreamReader(responseStream, Encoding.UTF8);
-
-        while (!cancellationToken.IsCancellationRequested)
+        var request = new HttpRequestMessage(HttpMethod.Post, "")
         {
-            var jsonChunk = await reader.ReadLineAsync();
-            
-            _logger.LogInformation($"Received chunk from OpenAI.");
+            Content = body
+        };
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
 
-            if (jsonChunk.StartsWith("data: "))
-            {
-                jsonChunk = jsonChunk.Substring("data: ".Length);
-                if (jsonChunk == "[DONE]")
-                {
-                    _logger.LogInformation($"Finished getting response from OpenAI");
-                    break;
-                }
+        using var httpResponse = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
-                var data = JsonConvert.DeserializeObject<OpenAiResponse>(jsonChunk);
+        var allData = string.Empty;
 
-                if (data.Choices[0].Delta.Content == "" || data.Choices[0].Delta.Content == null) continue;
+        using var streamReader = new StreamReader(await httpResponse.Content.ReadAsStreamAsync(cancellationToken));
+        while (!streamReader.EndOfStream)
+        {
+            var line = await streamReader.ReadLineAsync(cancellationToken);
+            allData += line + "\n\n";
+            if (string.IsNullOrEmpty(line)) continue;
 
-                yield return data.Choices[0].Delta.Content;
-            }
+            var json = line?.Substring(6, line.Length - 6);
+            if (json == "[DONE]") yield break;
+
+            var data = JsonConvert.DeserializeObject<OpenAiResponse>(json);
+
+            if (data.Choices[0].Delta.Content == "" || data.Choices[0].Delta.Content == null) continue;
+
+            yield return data.Choices[0].Delta.Content;
         }
     }
 }
