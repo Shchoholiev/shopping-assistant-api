@@ -95,7 +95,20 @@ public class ProductService : IProductService
 
         await foreach (var data in _openAiService.GetChatCompletionStream(chatRequest, cancellationToken))
         {
-            if (data.Contains('['))
+            if (data == "[DONE]")
+            {
+                if (!string.IsNullOrEmpty(messageBuffer.Text)) 
+                {
+                    _ = await _wishlistsService.AddMessageToPersonalWishlistAsync(wishlistId, new MessageDto()
+                    {
+                        Text = messageBuffer.Text,
+                        Role = MessageRoles.Application.ToString(),
+                    }, cancellationToken);
+                }
+
+                yield break;
+            }
+            else if (data.Contains('['))
             {
                 dataTypeHolder = data;
             }
@@ -110,6 +123,8 @@ public class ProductService : IProductService
                         Text = messageBuffer.Text,
                         Role = MessageRoles.Application.ToString(),
                     }, cancellationToken);
+
+                    messageBuffer.Text = string.Empty;
                 }
 
                 dataTypeHolder += data;

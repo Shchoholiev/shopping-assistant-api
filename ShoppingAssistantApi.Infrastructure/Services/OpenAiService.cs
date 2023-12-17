@@ -73,7 +73,11 @@ public class OpenAiService : IOpenAiService
             if (string.IsNullOrEmpty(line)) continue;
 
             var json = line?.Substring(6, line.Length - 6);
-            if (json == "[DONE]") yield break;
+            if (json == "[DONE]")
+            {
+                yield return json;
+                yield break;
+            }
 
             var data = JsonConvert.DeserializeObject<OpenAiResponse>(json);
 
