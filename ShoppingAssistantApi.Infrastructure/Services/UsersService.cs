@@ -59,4 +59,26 @@ public class UsersService : IUsersService
         entity.LastModifiedDateUtc = DateTime.UtcNow;
         await _repository.UpdateUserAsync(entity, cancellationToken);
     }
+
+    public async Task DeletePersonalUserAsync(string guestId, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(guestId, out var guid))
+        {
+            throw new InvalidDataException("Provided id is invalid.");
+        }
+
+        var entity = await _repository.GetUserAsync(u => u.GuestId == guid, cancellationToken);
+
+        if (entity.Id != GlobalUser.Id)
+        {
+            throw new UnAuthorizedException<User>();
+        }
+
+        if (entity == null)
+        {
+            throw new EntityNotFoundException<User>();
+        }
+
+        await _repository.DeleteAsync(entity, cancellationToken);
+    }
 }
