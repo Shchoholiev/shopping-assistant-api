@@ -2,6 +2,7 @@
 using ShoppingAssistantApi.Application.Models.Dtos;
 using ShoppingAssistantApi.Application.Models.Operations;
 using HotChocolate.Authorization;
+using ShoppingAssistantApi.Application.IServices;
 
 namespace ShoppingAssistantApi.Api.Mutations;
 
@@ -27,4 +28,12 @@ public class UsersMutation
     public Task<UserDto> RemoveFromRoleAsync(string roleName, string userId, CancellationToken cancellationToken,
         [Service] IUserManager userManager)
         => userManager.RemoveFromRoleAsync(roleName, userId, cancellationToken);
+
+    [Authorize]
+    public async Task<bool> DeletePersonalUserAsync(string guestId, CancellationToken cancellationToken,
+        [Service] IUsersService usersService)
+    {
+        await usersService.DeletePersonalUserAsync(guestId, cancellationToken);
+        return true;
+    } 
 }
