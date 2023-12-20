@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Moq.Protected;
 using ShoppingAssistantApi.Application.IServices;
@@ -31,7 +32,7 @@ public class OpenAiServiceTests
                 return client;
             });
         
-        _openAiService = new OpenAiService(_mockHttpClientFactory.Object);
+        _openAiService = new OpenAiService(_mockHttpClientFactory.Object, new Mock<ILogger<OpenAiService>>().Object);
     }
 
     [Fact]
@@ -78,7 +79,7 @@ public class OpenAiServiceTests
             {
                 new OpenAiMessage
                 {
-                    Role = OpenAiRole.User.RequestConvert(),
+                    Role = OpenAiRole.User.ToRequestString(),
                     Content = "Return Hello World!"
                 }
             }

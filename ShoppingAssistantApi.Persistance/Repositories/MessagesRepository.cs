@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using MongoDB.Bson;
 using MongoDB.Driver;
 using ShoppingAssistantApi.Application.IRepositories;
 using ShoppingAssistantApi.Domain.Entities;
@@ -17,5 +18,12 @@ public class MessagesRepository : BaseRepository<Message>, IMessagesRepository
                                 .Skip((pageNumber - 1) * pageSize)
                                 .Limit(pageSize)
                                 .ToListAsync(cancellationToken);
+    }
+
+    public Task<List<Message>> GetWishlistMessagesAsync(ObjectId wishlistId, CancellationToken cancellationToken)
+    {
+        return _collection
+            .Find(x => !x.IsDeleted && x.WishlistId == wishlistId)
+            .ToListAsync(cancellationToken);
     }
 }
